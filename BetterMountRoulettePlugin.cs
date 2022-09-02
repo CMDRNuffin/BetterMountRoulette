@@ -85,6 +85,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             Configuration = config;
 
             _command = InitCommands();
+            Mounts.Instance.Load(config);
 
             DalamudPluginInterface.UiBuilder.OpenConfigUi += ConfigWindow.Open;
 
