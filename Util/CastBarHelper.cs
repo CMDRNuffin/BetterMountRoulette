@@ -17,8 +17,8 @@ using Addon = FFXIVClientStructs.Attributes.Addon;
 
 internal static class CastBarHelper
 {
-    private static int _mountRouletteIconID;
-    private static SeString? _mountRouletteText;
+    private static (int IconID, SeString Text)? _regularMountRoulette;
+    private static (int IconID, SeString Text)? _flyingMountRoulette;
 
     private static (long IconID, string Text)? _lastCastInfo;
     private static uint? _lastMountActionID;
@@ -44,6 +44,7 @@ internal static class CastBarHelper
     }
 
     public static uint MountID { get; set; }
+    public static bool IsFlyingRoulette { get; set; }
 
     public static unsafe void Enable()
     {
@@ -89,16 +90,18 @@ internal static class CastBarHelper
             return;
         }
 
-        if (Show is false && _mountRouletteText is null)
+        if (Show is false && _regularMountRoulette is null)
         {
-            var mountRouletteAction = BetterMountRoulettePlugin.GameData.GetExcelSheet<GeneralAction>()!
-                .GetRow(9);
-            _mountRouletteText = mountRouletteAction!.Name;
-            _mountRouletteIconID = mountRouletteAction.Icon;
+            var sheet = BetterMountRoulettePlugin.GameData.GetExcelSheet<GeneralAction>();
+            var mountRouletteAction = sheet!.GetRow(9);
+            _regularMountRoulette = (mountRouletteAction!.Icon, mountRouletteAction.Name);
+
+            mountRouletteAction = sheet.GetRow(24);
+            _flyingMountRoulette = (mountRouletteAction!.Icon, mountRouletteAction.Name);
         }
 
         // un-hiding mount doesn't work cleanly.
-        // implicitly unhiding works best usually, but ot at all if the same mount
+        // implicitly unhiding works best usually, but not at all if the same mount
         // is selected first by roulette and then again manually
         UpdateCastBarInternal(castBar);
     }
@@ -125,11 +128,15 @@ internal static class CastBarHelper
             _lastCastInfo = (component->IconId, skillNameText->NodeText.ToString());
 
             // replace cast bar contents with mount roulette information.
-            component->IconId = _mountRouletteIconID;
-            component->IconImage->LoadIconTexture(_mountRouletteIconID, 0);
-            skillNameText->SetText(_mountRouletteText!.RawData);
+            var mountRoulette = IsFlyingRoulette ? _flyingMountRoulette : _regularMountRoulette;
+            var iconID = mountRoulette!.Value.IconID;
+            var text = mountRoulette.Value.Text.RawData;
+
+            component->IconId = iconID;
+            component->IconImage->LoadIconTexture(iconID, 0);
+            skillNameText->SetText(text);
         }
-        else if (_lastCastInfo is { } /* not null, but nameable */ castInfo)
+        else if (_lastCastInfo is { } /* same as "not null", but nameable */ castInfo)
         {
             // restore previous cast info
             // TODO: find the place in the game code where the transformation from

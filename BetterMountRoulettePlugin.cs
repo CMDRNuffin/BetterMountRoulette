@@ -185,8 +185,9 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
         switch (oldActionType)
         {
-            case ActionType.General when oldActionId == 9 && actionType != oldActionType:
+            case ActionType.General when oldActionId is 9 or 24 && actionType != oldActionType:
                 CastBarHelper.Show = false;
+                CastBarHelper.IsFlyingRoulette = oldActionId == 24;
                 CastBarHelper.MountID = actionID;
                 break;
             case ActionType.Mount:
