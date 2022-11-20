@@ -150,7 +150,7 @@ internal class Mounts
         var availableMounts = _mounts.Where(x => x.IsAvailable(actionManager)).ToList();
         if (!availableMounts.Any())
         {
-            return _mounts.Where(x => x.Enabled && x.Unlocked).FirstOrDefault()?.ID ?? 0;
+            return 0;
         }
 
 #pragma warning disable CA5394 // Do not use insecure randomness
