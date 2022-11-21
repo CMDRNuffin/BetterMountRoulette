@@ -171,9 +171,10 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
         }
 
+        var isRouletteActionID = actionID is 9 or 24;
         var oldActionType = actionType;
         var oldActionId = actionID;
-        if (actionType == ActionType.General && actionID == 9)
+        if (actionType == ActionType.General && isRouletteActionID)
         {
             var newActionID = Mounts.Instance.GetRandom(actionManager);
             if (newActionID != 0)
@@ -185,7 +186,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
         switch (oldActionType)
         {
-            case ActionType.General when oldActionId is 9 or 24 && actionType != oldActionType:
+            case ActionType.General when isRouletteActionID && actionType != oldActionType:
                 CastBarHelper.Show = false;
                 CastBarHelper.IsFlyingRoulette = oldActionId == 24;
                 CastBarHelper.MountID = actionID;
