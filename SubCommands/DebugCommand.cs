@@ -14,7 +14,7 @@ internal class DebugCommand : SubCommandBase
     {
         if (parameter.Length == 1 && parameter[0] == "clr")
         {
-            Plugin.DebugWindow.Clear();
+            Plugin.WindowManager.DebugWindow.Clear();
             return true;
         }
 
@@ -23,7 +23,7 @@ internal class DebugCommand : SubCommandBase
             return false;
         }
 
-        Plugin.DebugWindow.Open();
+        Plugin.WindowManager.DebugWindow.Open();
 
         return true;
     }

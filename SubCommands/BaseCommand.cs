@@ -21,7 +21,7 @@ internal class BaseCommand : SubCommandBase
             return false;
         }
 
-        Plugin.ConfigWindow.Open();
+        Plugin.WindowManager.OpenConfigWindow();
         return true;
     }
 

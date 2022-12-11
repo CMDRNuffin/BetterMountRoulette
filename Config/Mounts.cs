@@ -1,5 +1,6 @@
 ﻿namespace BetterMountRoulette.Config;
 
+using BetterMountRoulette.UI;
 using BetterMountRoulette.Util;
 
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -21,34 +22,94 @@ internal class Mounts
     private const int COLUMNS = 5;
     private const int ROWS = 6;
 
-    private readonly List<MountData> _mounts;
-    private readonly Dictionary<uint, MountData> _mountsByID;
+    private static volatile bool _isInitialized;
+    private static readonly object _initLock = new();
+
+    private static readonly Dictionary<uint, MountData> _mountsByID = new();
+    private static readonly List<MountData> _mounts = new();
+    private readonly List<MountSelectionData> _selectableMounts;
+    private readonly Dictionary<uint, MountSelectionData> _selectableMountsByID;
     private static readonly Random _random = new();
 
-    private List<MountData>? _filteredMounts;
-    private static Mounts? _instance;
+    private List<MountSelectionData>? _filteredMounts;
+    private static readonly Dictionary<string, Mounts> _instancesByGroup = new(StringComparer.InvariantCultureIgnoreCase);
+    private static Configuration _config = new();
 
-    public Mounts()
+    private static void InitializeIfNecessary()
     {
-        _mounts = (from mount in BetterMountRoulettePlugin.GameData.GetExcelSheet<Mount>()
-                   where mount.UIPriority > 0 && mount.Icon != 0 /* valid mounts only */
-                   orderby mount.UIPriority, mount.RowId
-                   select new MountData
-                   {
-                       IconID = mount.Icon,
-                       ID = mount.RowId,
-                       Name = mount.Singular,
-                       Enabled = true,
-                   }).ToList();
+        // make sure initialization only runs once
+        if (_isInitialized)
+        {
+            return;
+        }
 
-        _mountsByID = _mounts.ToDictionary(x => x.ID);
+        lock (_initLock)
+        {
+            // make sure initialization only runs once
+            // (again, in case multiple threads called this at the same time)
+            if (_isInitialized)
+            {
+                return;
+            }
+
+            _mounts.AddRange(GetAllMounts());
+            foreach (var mount in _mounts)
+            {
+                _mountsByID.Add(mount.ID, mount);
+            }
+
+            _isInitialized = true;
+        }
+    }
+
+    public static WindowManager WindowManager { get; set; } = null!;
+
+    private static IEnumerable<MountData> GetAllMounts()
+    {
+        return from mount in BetterMountRoulettePlugin.GameData.GetExcelSheet<Mount>()
+               where mount.UIPriority > 0 && mount.Icon != 0 /* valid mounts only */
+               orderby mount.UIPriority, mount.RowId
+               select new MountData
+               {
+                   IconID = mount.Icon,
+                   ID = mount.RowId,
+                   Name = mount.Singular,
+               };
+    }
+
+    private Mounts()
+    {
+        InitializeIfNecessary();
+
+        _selectableMounts = _mounts.ConvertAll(x => new MountSelectionData(x, true));
+        _selectableMountsByID = _selectableMounts.ToDictionary(x => x.Mount.ID);
 
         RefreshUnlocked();
     }
 
-    public static Mounts Instance => _instance ??= new();
+    public int ItemCount => (_filteredMounts ?? _selectableMounts).Count;
 
-    public int ItemCount => (_filteredMounts ?? _mounts).Count;
+    public static Mounts? GetInstance(string name)
+    {
+        if (_instancesByGroup.TryGetValue(name, out var value))
+        {
+            return value;
+        }
+        else
+        {
+            var mountGroup = _config.GetMountGroup(name);
+
+            if (mountGroup is null)
+            {
+                return null;
+            }
+
+            value = new();
+            _instancesByGroup[name] = value;
+            value.Load(mountGroup);
+            return value;
+        }
+    }
 
     public int PageCount
     {
@@ -59,24 +120,42 @@ internal class Mounts
         }
     }
 
-    internal void Load(Configuration config)
+    internal static void Load(Configuration config)
     {
-        _mounts.ForEach(x => x.Enabled = false);
-        config.EnabledMounts.ForEach(x =>
+        _config = config;
+        foreach (var group in config.Groups.Concat(new[] { new DefaultMountGroup(config) }))
         {
-            if (_mountsByID.TryGetValue(x, out var mount))
+            var item = new Mounts();
+            item.Load(group);
+            _instancesByGroup[group.Name] = item;
+        }
+    }
+
+    internal static void Remove(string groupName)
+    {
+        _ = _instancesByGroup.Remove(groupName);
+    }
+
+    private void Load(MountGroup mountGroup)
+    {
+        _selectableMounts.ForEach(x => x.Enabled = false);
+        mountGroup.EnabledMounts.ForEach(x =>
+        {
+            if (_selectableMountsByID.TryGetValue(x, out var mount))
             {
                 mount.Enabled = true;
             }
         });
+
+        UpdateUnlocked(mountGroup.IncludeNewMounts);
     }
 
-    internal void Save(Configuration config)
+    internal void Save(MountGroup config)
     {
-        config.EnabledMounts = _mounts.Where(x => x.Enabled).Select(x => x.ID).ToList();
+        config.EnabledMounts = _selectableMounts.Where(x => x.Enabled).Select(x => x.Mount.ID).ToList();
     }
 
-    public unsafe void RefreshUnlocked()
+    public static unsafe void RefreshUnlocked()
     {
         foreach (var mount in _mounts)
         {
@@ -108,20 +187,20 @@ internal class Mounts
         ImGui.EndTable();
     }
 
-    private List<MountData> GetPage(int page)
+    private List<MountSelectionData> GetPage(int page)
     {
-        return (_filteredMounts ?? _mounts)
+        return (_filteredMounts ?? _selectableMounts)
             .Skip((page - 1) * PAGE_SIZE)
             .Take(PAGE_SIZE)
             .ToList();
     }
 
-    private IEnumerable<MountData> FilteredMounts(bool showUnlocked, bool? enabledStatus, string? filter)
+    private IEnumerable<MountSelectionData> FilteredMounts(bool showUnlocked, bool? enabledStatus, string? filter)
     {
-        IEnumerable<MountData> mounts = _mounts;
+        IEnumerable<MountSelectionData> mounts = _selectableMounts;
         if (!showUnlocked)
         {
-            mounts = mounts.Where(x => x.Unlocked);
+            mounts = mounts.Where(x => x.Mount.Unlocked);
         }
 
         if (enabledStatus is not null)
@@ -131,13 +210,13 @@ internal class Mounts
 
         if (!string.IsNullOrEmpty(filter))
         {
-            mounts = mounts.Where(x => x.Name.RawString.Contains(filter, StringComparison.CurrentCultureIgnoreCase));
+            mounts = mounts.Where(x => x.Mount.Name.RawString.Contains(filter, StringComparison.CurrentCultureIgnoreCase));
         }
 
         return mounts;
     }
 
-    public (uint IconID, SeString Name) GetCastBarInfo(uint mountID)
+    public static (uint IconID, SeString Name) GetCastBarInfo(uint mountID)
     {
         var mount = _mountsByID[mountID];
         return (mount.IconID, mount.Name);
@@ -147,7 +226,7 @@ internal class Mounts
     {
         RefreshUnlocked();
 
-        var availableMounts = _mounts.Where(x => x.IsAvailable(actionManager)).ToList();
+        var availableMounts = _selectableMounts.Where(x => x.IsAvailable(actionManager)).ToList();
         if (!availableMounts.Any())
         {
             return 0;
@@ -158,14 +237,14 @@ internal class Mounts
         var index = _random.Next(availableMounts.Count);
 #pragma warning restore CA5394 // Do not use insecure randomness
 
-        return availableMounts[index].ID;
+        return availableMounts[index].Mount.ID;
     }
 
     internal void UpdateUnlocked(bool enableNewMounts)
     {
-        foreach (var mount in _mounts)
+        foreach (var mount in _selectableMounts)
         {
-            if (!mount.Unlocked)
+            if (!mount.Mount.Unlocked)
             {
                 mount.Enabled = enableNewMounts;
             }
@@ -175,9 +254,31 @@ internal class Mounts
     internal void Update(bool enabled, int? page = null)
     {
         var list = page is null
-            ? _mounts.Where(x => x.Unlocked).ToList()
+            ? _selectableMounts.Where(x => x.Mount.Unlocked).ToList()
             : GetPage(page.Value);
         list.ForEach(x => x.Enabled = enabled);
+    }
+
+    private class MountSelectionData
+    {
+        public MountSelectionData(MountData mount, bool enabled)
+        {
+            Mount = mount;
+            Enabled = enabled;
+        }
+
+        public MountData Mount { get; }
+        public bool Enabled { get; set; }
+
+        public void Render()
+        {
+            Enabled = Mount.Render(Enabled);
+        }
+
+        public bool IsAvailable(Pointer<ActionManager> actionManager)
+        {
+            return Enabled && Mount.IsAvailable(actionManager);
+        }
     }
 
     private class MountData
@@ -188,10 +289,9 @@ internal class Mounts
         public uint ID { get; set; }
         public uint IconID { get; set; }
         public SeString Name { get; init; } = null!;
-        public bool Enabled { get; set; }
         public bool Unlocked { get; set; }
 
-        public void Render()
+        public bool Render(bool enabled)
         {
             _ = ImGui.TableNextColumn();
 
@@ -211,7 +311,7 @@ internal class Mounts
 
             if (ImGui.ImageButton(_mountIcon!.Value, buttonSize, Vector2.Zero, Vector2.One, 0))
             {
-                Enabled ^= true;
+                enabled ^= true;
             }
 
             ImGui.PopStyleColor(3);
@@ -227,13 +327,15 @@ internal class Mounts
             var overlayPos = originalPos + new Vector2(buttonSize.X - overlaySize.X + OverlayOffset, 0);
             ImGui.SetCursorPos(overlayPos);
 
-            Vector2 offset = new(Enabled ? 0.1f : 0.6f, 0.2f);
-            Vector2 offset2 = new(Enabled ? 0.4f : 0.9f, 0.8f);
+            Vector2 offset = new(enabled ? 0.1f : 0.6f, 0.2f);
+            Vector2 offset2 = new(enabled ? 0.4f : 0.9f, 0.8f);
             ImGui.Image(_selectedUnselectedIcon!.Value, overlaySize, offset, offset2);
 
             // put cursor back to where it was after rendering the button to prevent
             // messing up the table rendering
             ImGui.SetCursorPos(finalPos);
+
+            return enabled;
         }
 
         private void LoadImages()
@@ -244,7 +346,7 @@ internal class Mounts
 
         public unsafe bool IsAvailable(Pointer<ActionManager> actionManager)
         {
-            return Enabled && Unlocked && actionManager.Value->GetActionStatus(ActionType.Mount, ID) == 0;
+            return Unlocked && actionManager.Value->GetActionStatus(ActionType.Mount, ID) == 0;
         }
     }
 }

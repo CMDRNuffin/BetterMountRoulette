@@ -31,6 +31,8 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
     public const string CommandText = "/pbmr";
 
+    public const string MountCommandText = "/pmount";
+
     ////public const string CommandHelpMessage = $"Does all the things. Type \"{CommandText} help\" for more information.";
     public const string CommandHelpMessage = $"Open the config window.";
 
@@ -63,19 +65,17 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     internal Configuration Configuration { get; private set; }
 
     private readonly Hook<UseActionHandler>? _useActionHook;
-
-    internal readonly DebugWindow DebugWindow = new();
-    internal readonly ConfigWindow ConfigWindow;
+    internal readonly WindowManager WindowManager;
+    private (bool hide, uint actionID) _hideAction;
     internal ISubCommand _command;
 
     public unsafe BetterMountRoulettePlugin()
     {
         CastBarHelper.Plugin = this;
 
-        ConfigWindow = new(this);
-        ConfigWindow.Closed += SaveConfig;
-        DalamudPluginInterface.UiBuilder.Draw += DebugWindow.Draw;
-        DalamudPluginInterface.UiBuilder.Draw += ConfigWindow.Draw;
+        WindowManager = new WindowManager(this);
+        Mounts.WindowManager = WindowManager;
+        DalamudPluginInterface.UiBuilder.Draw += WindowManager.Draw;
 
         try
         {
@@ -85,17 +85,26 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             Configuration = config;
 
             _command = InitCommands();
-            Mounts.Instance.Load(config);
 
-            DalamudPluginInterface.UiBuilder.OpenConfigUi += ConfigWindow.Open;
+            Mounts.RefreshUnlocked();
+            ClientState.Login += OnCharacterLogin;
+
+            Mounts.Load(config);
+            DalamudPluginInterface.UiBuilder.OpenConfigUi += WindowManager.OpenConfigWindow;
 
             _ = CommandManager.AddHandler(CommandText, new CommandInfo(HandleCommand) { HelpMessage = CommandHelpMessage });
+            _ = CommandManager.AddHandler(
+                MountCommandText,
+                new CommandInfo(HandleMountCommand)
+                {
+                    HelpMessage = "Mount a random mount from the specified group, e.g. \"/pmount My Group\" summons a mount from the \"My Group\" group"
+                });
 
             var renderAddress = (IntPtr)ActionManager.fpUseAction;
 
             if (renderAddress == IntPtr.Zero)
             {
-                DebugWindow.Broken("Unable to load UseAction address");
+                WindowManager.DebugWindow.Broken("Unable to load UseAction address");
                 return;
             }
 
@@ -110,9 +119,45 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         }
     }
 
+    private void OnCharacterLogin(object? sender, EventArgs e)
+    {
+        Mounts.RefreshUnlocked();
+    }
+
     private void SaveConfig(object? sender, EventArgs e)
     {
         DalamudPluginInterface.SavePluginConfig(Configuration);
+    }
+
+    private unsafe void HandleMountCommand(string command, string arguments)
+    {
+        if (string.IsNullOrWhiteSpace(arguments))
+        {
+            Chat.PrintError("Please specify a mount group");
+            Chat.UpdateQueue();
+            return;
+        }
+
+        arguments = RenameItemDialog.NormalizeWhiteSpace(arguments);
+        var mountGroup = Mounts.GetInstance(arguments);
+        if (mountGroup == null)
+        {
+            Chat.PrintError($"Mount group \"{arguments}\" not found.");
+            Chat.UpdateQueue();
+            return;
+        }
+
+        var mount = mountGroup.GetRandom(ActionManager.Instance());
+        if (mount != 0)
+        {
+            _hideAction = (true, actionID: 9);
+            _ = ActionManager.Instance()->UseAction(ActionType.Mount, mount);
+        }
+        else
+        {
+            Chat.PrintError($"Unable to summon mount from group \"{arguments}\".");
+            Chat.UpdateQueue();
+        }
     }
 
     private void HandleCommand(string command, string arguments)
@@ -165,23 +210,39 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
     private unsafe byte OnUseAction(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID, uint a4, uint a5, uint a6, void* a7)
     {
-        // todo: if mounted (or mounted2), replace mount/mount roulette with dismount
+        var hideAction = _hideAction;
+        _hideAction = (false, 0);
+
         if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || !Configuration.Enabled)
         {
             return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
         }
 
+        string? groupName = (actionID, actionType) switch
+        {
+            (9, ActionType.General) => Configuration.MountRouletteGroup,
+            (24, ActionType.General) => Configuration.FlyingMountRouletteGroup,
+            _ => null,
+        };
+
         var isRouletteActionID = actionID is 9 or 24;
         var oldActionType = actionType;
         var oldActionId = actionID;
-        if (actionType == ActionType.General && isRouletteActionID)
+        if (groupName is not null)
         {
-            var newActionID = Mounts.Instance.GetRandom(actionManager);
+            var newActionID = Mounts.GetInstance(groupName)!.GetRandom(actionManager);
             if (newActionID != 0)
             {
                 actionType = ActionType.Mount;
                 actionID = newActionID;
             }
+        }
+
+        if (hideAction.hide)
+        {
+            oldActionId = _hideAction.actionID;
+            oldActionType = ActionType.General;
+            isRouletteActionID = true;
         }
 
         switch (oldActionType)
@@ -196,7 +257,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 CastBarHelper.MountID = actionID;
                 break;
         }
-
 
         var result = _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
 
@@ -214,19 +274,19 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 // TODO: dispose managed state (managed objects)
             }
 
-            Mounts.Instance.Save(Configuration);
             DalamudPluginInterface.SavePluginConfig(Configuration);
 
             _useActionHook?.Disable();
             _useActionHook?.Dispose();
 
-            DalamudPluginInterface.UiBuilder.Draw -= DebugWindow.Draw;
-            DalamudPluginInterface.UiBuilder.Draw -= ConfigWindow.Draw;
-            DalamudPluginInterface.UiBuilder.OpenConfigUi -= ConfigWindow.Open;
+            ClientState.Login -= OnCharacterLogin;
+            DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
+            DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
 
             TextureHelper.Dispose();
 
             _ = CommandManager.RemoveHandler(CommandText);
+            _ = CommandManager.RemoveHandler(MountCommandText);
 
             CastBarHelper.Plugin = null;
             CastBarHelper.Disable();
