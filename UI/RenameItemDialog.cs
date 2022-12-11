@@ -30,8 +30,8 @@ internal class RenameItemDialog : IWindow
         _manager = manager;
     }
 
-    public bool AllowEmptyName { get; set; } = false;
-    public bool NormalizeWhitespace { get; set; } = false;
+    public bool AllowEmptyName { get; set; }
+    public bool NormalizeWhitespace { get; set; }
 
     public void SetValidation(Func<string, bool> validate, Func<string, string> getValidationErrors)
     {
