@@ -39,7 +39,11 @@ internal class ConfigWindow : IWindow
     {
         if (ImGui.Begin("Better Mount Roulette", ref _isOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            if (ImGui.BeginTabBar("settings"))
+            if (!BetterMountRoulettePlugin.ClientState.IsLoggedIn)
+            {
+                ImGui.Text("Please log in first");
+            }
+            else if (ImGui.BeginTabBar("settings"))
             {
                 if (ImGui.BeginTabItem("General"))
                 {
@@ -70,11 +74,10 @@ internal class ConfigWindow : IWindow
         }
 
         ImGui.End();
-        ImGui.EndDisabled();
 
         if (!_isOpen)
         {
-            BetterMountRoulettePlugin.DalamudPluginInterface.SavePluginConfig(_plugin.Configuration);
+            BetterMountRoulettePlugin.SaveConfig(_plugin.Configuration);
             _plugin.WindowManager.Close(this);
         }
     }
@@ -195,6 +198,10 @@ internal class ConfigWindow : IWindow
         }
 
         Mounts.Remove(name);
+        if (_currentMountGroup == name)
+        {
+            _currentMountGroup = null;
+        }
     }
 
     private void RenameMountGroup(string currentMountGroup, string newName)
@@ -240,7 +247,20 @@ internal class ConfigWindow : IWindow
 
     private void DrawMountGroup(MountGroup group)
     {
+        if (group is null)
+        {
+            ImGui.Text("Group is null!");
+            return;
+        }
+
         var mounts = Mounts.GetInstance(group.Name)!;
+
+        if (mounts is null)
+        {
+            ImGui.Text($"Unable to load mounts for group {group.Name}!");
+            return;
+        }
+
         bool enableNewMounts = group.IncludeNewMounts;
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
 

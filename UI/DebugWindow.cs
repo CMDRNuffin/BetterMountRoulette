@@ -21,6 +21,7 @@ internal class DebugWindow
     {
         _text = text;
     }
+
     public void AddText(string text)
     {
         if (string.IsNullOrWhiteSpace(_text))
@@ -45,9 +46,11 @@ internal class DebugWindow
             return;
         }
 
-        // title = "Action Debug", window identifier = "BetterMountRouletteDbg"
-        _ = ImGui.Begin("Action Debug###BetterMountRouletteDbg", ref _isOpen);
-        ImGui.Text(string.IsNullOrWhiteSpace(_text) ? "no text" : _text);
+        if (ImGui.Begin("Action Debug###BetterMountRouletteDbg", ref _isOpen))
+        {
+            ImGui.Text(string.IsNullOrWhiteSpace(_text) ? "no text" : _text);
+        }
+
         ImGui.End();
     }
 

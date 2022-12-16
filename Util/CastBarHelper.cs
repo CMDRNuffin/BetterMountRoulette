@@ -118,9 +118,7 @@ internal static class CastBarHelper
         AtkTextNode* skillNameText = castBar->AtkUnitBase.GetTextNodeById(4u);
         var component = (AtkComponentIcon*)icon->Component;
 
-#if DEBUG
-        Plugin?.DebugWindow.Text($"Casting {castBar->CastName} | {skillNameText->NodeText}");
-#endif
+        BetterMountRoulettePlugin.Log($"Casting {castBar->CastName} | {skillNameText->NodeText}");
 
         if (Show is false)
         {

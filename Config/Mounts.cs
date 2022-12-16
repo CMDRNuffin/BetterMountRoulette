@@ -23,6 +23,7 @@ internal class Mounts
     private const int ROWS = 6;
 
     private static volatile bool _isInitialized;
+    private static volatile bool _unlockedCacheIsStale = true;
     private static readonly object _initLock = new();
 
     private static readonly Dictionary<uint, MountData> _mountsByID = new();
@@ -122,13 +123,9 @@ internal class Mounts
 
     internal static void Load(Configuration config)
     {
+        RefreshUnlocked();
+
         _config = config;
-        foreach (var group in config.Groups.Concat(new[] { new DefaultMountGroup(config) }))
-        {
-            var item = new Mounts();
-            item.Load(group);
-            _instancesByGroup[group.Name] = item;
-        }
     }
 
     internal static void Remove(string groupName)
@@ -150,13 +147,38 @@ internal class Mounts
         UpdateUnlocked(mountGroup.IncludeNewMounts);
     }
 
-    internal void Save(MountGroup config)
+    internal void Save(MountGroup mountGroup)
     {
-        config.EnabledMounts = _selectableMounts.Where(x => x.Enabled).Select(x => x.Mount.ID).ToList();
+        mountGroup.EnabledMounts = _selectableMounts.Where(x => x.Enabled).Select(x => x.Mount.ID).ToList();
     }
 
-    public static unsafe void RefreshUnlocked()
+    public static void InvalidateUnlockedCache()
     {
+        _unlockedCacheIsStale = true;
+    }
+
+    public static void RefreshUnlocked()
+    {
+        if (!BetterMountRoulettePlugin.ClientState.IsLoggedIn)
+        {
+            return;
+        }
+
+        if (!_unlockedCacheIsStale)
+        {
+            lock (_initLock)
+            {
+                if (!_unlockedCacheIsStale)
+                {
+                    return;
+                }
+            }
+        }
+
+        _unlockedCacheIsStale = false;
+
+        BetterMountRoulettePlugin.Log("Refreshing unlocked");
+        InitializeIfNecessary();
         foreach (var mount in _mounts)
         {
             mount.Unlocked = GameFunctions.HasMountUnlocked(mount.ID);
@@ -180,6 +202,8 @@ internal class Mounts
 
     public void RenderItems(int page)
     {
+        RefreshUnlocked();
+
         _ = ImGui.BeginTable("tbl_mounts", COLUMNS);
 
         GetPage(page).ForEach(x => x.Render());
@@ -253,6 +277,7 @@ internal class Mounts
 
     internal void Update(bool enabled, int? page = null)
     {
+        RefreshUnlocked();
         var list = page is null
             ? _selectableMounts.Where(x => x.Mount.Unlocked).ToList()
             : GetPage(page.Value);

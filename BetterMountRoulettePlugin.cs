@@ -20,6 +20,7 @@ using Lumina;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 
@@ -80,16 +81,16 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         try
         {
             Configuration config = DalamudPluginInterface.GetPluginConfig() as Configuration ?? Configuration.Init();
-            DalamudPluginInterface.SavePluginConfig(config);
+            config.Migrate();
+            SaveConfig(config);
 
             Configuration = config;
+            Mounts.Load(config);
+
+            ClientState.Login += OnClientStateLogin;
 
             _command = InitCommands();
 
-            Mounts.RefreshUnlocked();
-            ClientState.Login += OnCharacterLogin;
-
-            Mounts.Load(config);
             DalamudPluginInterface.UiBuilder.OpenConfigUi += WindowManager.OpenConfigWindow;
 
             _ = CommandManager.AddHandler(CommandText, new CommandInfo(HandleCommand) { HelpMessage = CommandHelpMessage });
@@ -119,14 +120,21 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         }
     }
 
-    private void OnCharacterLogin(object? sender, EventArgs e)
+    private void OnClientStateLogin(object? sender, EventArgs e)
     {
-        Mounts.RefreshUnlocked();
+        Log("Logging in");
+        Mounts.InvalidateUnlockedCache();
     }
 
-    private void SaveConfig(object? sender, EventArgs e)
+    [Conditional("DEBUG")]
+    internal static void Log(string message)
     {
-        DalamudPluginInterface.SavePluginConfig(Configuration);
+        CastBarHelper.Plugin!.WindowManager.DebugWindow.AddText(message);
+    }
+
+    internal static void SaveConfig(Configuration configuration)
+    {
+        DalamudPluginInterface.SavePluginConfig(configuration);
     }
 
     private unsafe void HandleMountCommand(string command, string arguments)
@@ -274,12 +282,11 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 // TODO: dispose managed state (managed objects)
             }
 
-            DalamudPluginInterface.SavePluginConfig(Configuration);
+            SaveConfig(Configuration);
 
             _useActionHook?.Disable();
             _useActionHook?.Dispose();
 
-            ClientState.Login -= OnCharacterLogin;
             DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
             DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
 
