@@ -23,7 +23,6 @@ internal class Mounts
     private const int ROWS = 6;
 
     private static volatile bool _isInitialized;
-    private static volatile bool _unlockedCacheIsStale = true;
     private static readonly object _initLock = new();
 
     private static readonly Dictionary<uint, MountData> _mountsByID = new();
@@ -152,30 +151,12 @@ internal class Mounts
         mountGroup.EnabledMounts = _selectableMounts.Where(x => x.Enabled).Select(x => x.Mount.ID).ToList();
     }
 
-    public static void InvalidateUnlockedCache()
-    {
-        _unlockedCacheIsStale = true;
-    }
-
     public static void RefreshUnlocked()
     {
         if (!BetterMountRoulettePlugin.ClientState.IsLoggedIn)
         {
             return;
         }
-
-        if (!_unlockedCacheIsStale)
-        {
-            lock (_initLock)
-            {
-                if (!_unlockedCacheIsStale)
-                {
-                    return;
-                }
-            }
-        }
-
-        _unlockedCacheIsStale = false;
 
         BetterMountRoulettePlugin.Log("Refreshing unlocked");
         InitializeIfNecessary();
@@ -248,8 +229,6 @@ internal class Mounts
 
     internal uint GetRandom(Pointer<ActionManager> actionManager)
     {
-        RefreshUnlocked();
-
         var availableMounts = _selectableMounts.Where(x => x.IsAvailable(actionManager)).ToList();
         if (!availableMounts.Any())
         {
@@ -371,7 +350,7 @@ internal class Mounts
 
         public unsafe bool IsAvailable(Pointer<ActionManager> actionManager)
         {
-            return Unlocked && actionManager.Value->GetActionStatus(ActionType.Mount, ID) == 0;
+            return actionManager.Value->GetActionStatus(ActionType.Mount, ID) == 0;
         }
     }
 }

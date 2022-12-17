@@ -87,8 +87,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             Configuration = config;
             Mounts.Load(config);
 
-            ClientState.Login += OnClientStateLogin;
-
             _command = InitCommands();
 
             DalamudPluginInterface.UiBuilder.OpenConfigUi += WindowManager.OpenConfigWindow;
@@ -118,12 +116,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             Dispose();
             throw;
         }
-    }
-
-    private void OnClientStateLogin(object? sender, EventArgs e)
-    {
-        Log("Logging in");
-        Mounts.InvalidateUnlockedCache();
     }
 
     [Conditional("DEBUG")]

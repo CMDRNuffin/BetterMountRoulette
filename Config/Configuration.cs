@@ -31,6 +31,7 @@ internal class Configuration : IPluginConfiguration
         var res = new Configuration { Version = CONFIG_VERSION };
         Mounts.Load(res);
         Mounts.GetInstance(res.DefaultGroupName)!.Update(res.IncludeNewMounts);
+        Mounts.Remove(res.DefaultGroupName);
         return res;
     }
 
