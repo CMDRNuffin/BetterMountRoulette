@@ -4,7 +4,7 @@ using BetterMountRoulette.UI;
 using BetterMountRoulette.Util;
 
 using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.STD;
+using FFXIVClientStructs.Interop;
 
 using ImGuiNET;
 
@@ -287,8 +287,8 @@ internal class Mounts
 
     private class MountData
     {
-        private IntPtr? _mountIcon;
-        private static IntPtr? _selectedUnselectedIcon;
+        private nint? _mountIcon;
+        private static nint? _selectedUnselectedIcon;
 
         public uint ID { get; set; }
         public uint IconID { get; set; }

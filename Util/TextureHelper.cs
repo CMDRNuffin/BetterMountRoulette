@@ -14,13 +14,13 @@ internal static class TextureHelper
 
     private static DataManager DataManager => BetterMountRoulettePlugin.DataManager;
 
-    public static IntPtr LoadUldTexture(string name)
+    public static nint LoadUldTexture(string name)
     {
         string path = $"ui/uld/{name}_hr1.tex";
         return LoadTexture(_loadedTextures, path, DataManager.GetImGuiTexture);
     }
 
-    public static IntPtr LoadIconTexture(uint id)
+    public static nint LoadIconTexture(uint id)
     {
         return LoadTexture(_loadedIconTextures, id, DataManager.GetImGuiTextureIcon);
     }
@@ -33,7 +33,7 @@ internal static class TextureHelper
         values.ForEach(x => x.Dispose());
     }
 
-    private static IntPtr LoadTexture<TKey>(
+    private static nint LoadTexture<TKey>(
         Dictionary<TKey, TextureWrap> cache,
         TKey key,
         Func<TKey, TextureWrap?> loadFunc)
@@ -47,7 +47,7 @@ internal static class TextureHelper
         texture = loadFunc(key);
         if (texture is null)
         {
-            return IntPtr.Zero;
+            return nint.Zero;
         }
 
         cache[key] = texture;

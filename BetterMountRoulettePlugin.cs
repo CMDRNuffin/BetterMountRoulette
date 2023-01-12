@@ -99,9 +99,9 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                     HelpMessage = "Mount a random mount from the specified group, e.g. \"/pmount My Group\" summons a mount from the \"My Group\" group"
                 });
 
-            var renderAddress = (IntPtr)ActionManager.fpUseAction;
+            var renderAddress = (nint)ActionManager.Addresses.UseAction.Value;
 
-            if (renderAddress == IntPtr.Zero)
+            if (renderAddress is 0)
             {
                 WindowManager.DebugWindow.Broken("Unable to load UseAction address");
                 return;
