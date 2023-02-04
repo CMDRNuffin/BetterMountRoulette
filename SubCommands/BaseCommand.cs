@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 
 [SuppressMessage("Performance", "CA1812", Justification = "Instantiated via reflection")]
-internal class BaseCommand : SubCommandBase
+internal sealed class BaseCommand : SubCommandBase
 {
     private string? _helpMessage;
 

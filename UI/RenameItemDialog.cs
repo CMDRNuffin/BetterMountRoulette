@@ -8,7 +8,7 @@ using System;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-internal class RenameItemDialog : IWindow
+internal sealed class RenameItemDialog : IWindow
 {
     private readonly string _title;
     private readonly WindowManager _manager;

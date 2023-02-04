@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-internal class WindowManager
+internal sealed class WindowManager
 {
     private readonly BetterMountRoulettePlugin _plugin;
     private readonly WindowStack _windows = new();
@@ -103,7 +103,7 @@ internal class WindowManager
         }
     }
 
-    private class WindowStack
+    private sealed class WindowStack
     {
         private readonly List<(List<IWindow> Windows, bool IsDialog)> _windows = new();
 

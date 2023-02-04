@@ -2,7 +2,7 @@
 
 using ImGuiNET;
 
-internal class DebugWindow
+internal sealed class DebugWindow
 {
     private string? _text;
 

@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-internal class Configuration : IPluginConfiguration
+internal sealed class Configuration : IPluginConfiguration
 {
     private const int CONFIG_VERSION = 2;
 

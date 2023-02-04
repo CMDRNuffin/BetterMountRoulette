@@ -11,7 +11,7 @@ internal class MountGroup
     public virtual bool IncludeNewMounts { get; set; } = true;
 }
 
-internal class DefaultMountGroup : MountGroup
+internal sealed class DefaultMountGroup : MountGroup
 {
     private readonly Configuration _config;
 

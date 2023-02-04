@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-internal class ConfigWindow : IWindow
+internal sealed class ConfigWindow : IWindow
 {
     private bool _isOpen;
     private readonly BetterMountRoulettePlugin _plugin;
@@ -328,6 +328,13 @@ internal class ConfigWindow : IWindow
     {
         bool isEnabled = groupName is not null;
         _ = ImGui.Checkbox($"Enable for {(isFlying ? "Flying " : "")} Mount Roulette", ref isEnabled);
+        if (isFlying && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+        {
+            ImGui.SetTooltip(
+                "Legacy action from when some mounts couldn't fly. " +
+                "Not currently available in game without the help of external tools or via macro.");
+        }
+
         if (isEnabled)
         {
             groupName ??= _plugin.Configuration.DefaultGroupName;

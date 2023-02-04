@@ -16,7 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-internal class Mounts
+internal sealed class Mounts
 {
     private const int PAGE_SIZE = COLUMNS * ROWS;
     private const int COLUMNS = 5;
@@ -263,7 +263,7 @@ internal class Mounts
         list.ForEach(x => x.Enabled = enabled);
     }
 
-    private class MountSelectionData
+    private sealed class MountSelectionData
     {
         public MountSelectionData(MountData mount, bool enabled)
         {
@@ -285,7 +285,7 @@ internal class Mounts
         }
     }
 
-    private class MountData
+    private sealed class MountData
     {
         private nint? _mountIcon;
         private static nint? _selectedUnselectedIcon;

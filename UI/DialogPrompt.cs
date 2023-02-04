@@ -2,7 +2,7 @@
 
 using ImGuiNET;
 
-internal class DialogPrompt : IWindow
+internal sealed class DialogPrompt : IWindow
 {
     private readonly WindowManager _manager;
     private readonly string _title;
