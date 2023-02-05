@@ -13,9 +13,9 @@ internal class MountGroup
 
 internal sealed class DefaultMountGroup : MountGroup
 {
-    private readonly Configuration _config;
+    private readonly ConfigurationBase _config;
 
-    public DefaultMountGroup(Configuration config)
+    public DefaultMountGroup(ConfigurationBase config)
     {
         _config = config;
     }

@@ -33,7 +33,7 @@ internal sealed class Mounts
 
     private List<MountSelectionData>? _filteredMounts;
     private static readonly Dictionary<string, Mounts> _instancesByGroup = new(StringComparer.InvariantCultureIgnoreCase);
-    private static Configuration _config = new();
+    private static ConfigurationBase _config = new();
 
     private static void InitializeIfNecessary()
     {
@@ -120,7 +120,7 @@ internal sealed class Mounts
         }
     }
 
-    internal static void Load(Configuration config)
+    internal static void Load(ConfigurationBase config)
     {
         RefreshUnlocked();
 

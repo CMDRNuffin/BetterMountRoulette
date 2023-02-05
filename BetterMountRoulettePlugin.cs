@@ -63,12 +63,16 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     [PluginService]
     internal static ClientState ClientState { get; private set; } = null!;
 
+    [PluginService]
+    internal static Framework Framework { get; private set; } = null!;
+
     internal Configuration Configuration { get; private set; }
 
     private readonly Hook<UseActionHandler>? _useActionHook;
     internal readonly WindowManager WindowManager;
     private (bool hide, uint actionID) _hideAction;
     internal ISubCommand _command;
+    internal ulong? _playerID;
 
     public unsafe BetterMountRoulettePlugin()
     {
@@ -77,6 +81,8 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         WindowManager = new WindowManager(this);
         Mounts.WindowManager = WindowManager;
         DalamudPluginInterface.UiBuilder.Draw += WindowManager.Draw;
+        ClientState.Login += OnLogin;
+        Framework.Update += OnFrameworkUpdate;
 
         try
         {
@@ -115,6 +121,68 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         {
             Dispose();
             throw;
+        }
+    }
+
+    private void OnFrameworkUpdate(Framework framework)
+    {
+        if (_playerID is null)
+        {
+            LoadCharacterConfig();
+        }
+    }
+
+    private void OnLogin(object? sender, EventArgs e)
+    {
+        _playerID = null;
+    }
+
+    private void LoadCharacterConfig()
+    {
+        var player = ClientState.LocalPlayer;
+        if (player is null)
+        {
+            return;
+        }
+
+        _playerID = ClientState.LocalContentId;
+        var charData = (Name: player.Name.ToString(), World: player.HomeWorld.GameData!.Name.ToString());
+        var playerConfig = Configuration.CharacterConfigs.FirstOrDefault(c => c.CharacterID == _playerID);
+        bool isNew = false;
+        if (playerConfig is null)
+        {
+            isNew = true;
+            playerConfig = new CharacterConfig
+            {
+                CharacterID = _playerID.Value,
+                CharacterName = charData.Name,
+                CharacterWorld = charData.World,
+            };
+
+            if (!Configuration.CharacterConfigs.Any())
+            {
+                // initial migration from one global entry to character-specific
+                // (uses first logged-in character)
+                isNew = false;
+                playerConfig.CopyFrom(Configuration);
+            }
+
+            Configuration.CharacterConfigs.Add(playerConfig);
+            SaveConfig(Configuration);
+        }
+        else if (charData != (playerConfig.CharacterName, playerConfig.CharacterWorld))
+        {
+            playerConfig.CharacterName = charData.Name;
+            playerConfig.CharacterWorld = charData.World;
+            SaveConfig(Configuration);
+        }
+
+        Mounts.Load(playerConfig);
+        if (isNew)
+        {
+            var inst = Mounts.GetInstance(playerConfig.DefaultGroupName)!;
+            inst.Update(true);
+            inst.UpdateUnlocked(true);
         }
     }
 

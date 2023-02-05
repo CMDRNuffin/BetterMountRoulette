@@ -6,13 +6,17 @@ using ImGuiNET;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 
 internal sealed class ConfigWindow : IWindow
 {
     private bool _isOpen;
     private readonly BetterMountRoulettePlugin _plugin;
     private string? _currentMountGroup;
+    private ulong? _currentCharacter;
 
     public ConfigWindow(BetterMountRoulettePlugin plugin)
     {
@@ -69,6 +73,12 @@ internal sealed class ConfigWindow : IWindow
                     ImGui.EndTabItem();
                 }
 
+                if (ImGui.BeginTabItem("Character Management"))
+                {
+                    DrawCharacterManagement();
+                    ImGui.EndTabItem();
+                }
+
                 ImGui.EndTabBar();
             }
         }
@@ -79,6 +89,84 @@ internal sealed class ConfigWindow : IWindow
         {
             BetterMountRoulettePlugin.SaveConfig(_plugin.Configuration);
             _plugin.WindowManager.Close(this);
+        }
+    }
+
+    private void DrawCharacterManagement()
+    {
+        if (!ImGui.BeginListBox("Characters"))
+        {
+            return;
+        }
+
+        string selectedCharacterName = "NO CHARACTER SELECTED";
+        foreach (var character in _plugin.Configuration.CharacterConfigs.OrderBy(x => x.CharacterID))
+        {
+            StringBuilder sb = new(character.CharacterName);
+            if (!string.IsNullOrWhiteSpace(character.CharacterWorld))
+            {
+                _ = sb.Append(CultureInfo.CurrentCulture, $" ({character.CharacterWorld})");
+            }
+            var text = sb.ToString();
+
+            if (ImGui.Selectable(text, _currentCharacter == character.CharacterID))
+            {
+                Toggle(ref _currentCharacter, character.CharacterID);
+            }
+
+            if (_currentCharacter == character.CharacterID)
+            {
+                selectedCharacterName = text;
+            }
+        }
+
+        ImGui.EndListBox();
+        ImGui.BeginDisabled(_currentCharacter is null || _currentCharacter == BetterMountRoulettePlugin.ClientState.LocalContentId);
+
+        if (ImGui.Button("Import"))
+        {
+            Debug.Assert(_currentCharacter is not null);
+            var currentCharacter = _currentCharacter.Value;
+            _plugin.WindowManager.Confirm(
+                "Import settings?",
+                $"Import settings from {selectedCharacterName}? This will overwrite all settings for this character!",
+                ("Confirm", () => ImportFromCharacter(currentCharacter)),
+                "Cancel");
+        }
+
+        if (ImGui.Button("Delete"))
+        {
+            Debug.Assert(_currentCharacter is not null);
+            var currentCharacter = _currentCharacter.Value;
+            _plugin.WindowManager.Confirm(
+                "Delete settings?",
+                $"Delete settings for {selectedCharacterName}? This action cannot be undone!",
+                ("Confirm", () => DeleteCharacter(currentCharacter)),
+                "Cancel");
+        }
+
+        ImGui.EndDisabled();
+    }
+
+    private void ImportFromCharacter(ulong characterID)
+    {
+        _plugin.WindowManager.Confirm("Import", "Imported (not really - TODO)!", "OK");
+    }
+
+    private void DeleteCharacter(ulong characterID)
+    {
+        _plugin.WindowManager.Confirm("Deletion", "Deleted (not really - TODO)!", "OK");
+    }
+
+    private static void Toggle<T>(ref T? field, T value) where T : struct
+    {
+        if (Equals(field, value))
+        {
+            field = null;
+        }
+        else
+        {
+            field = value;
         }
     }
 

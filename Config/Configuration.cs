@@ -4,27 +4,17 @@ using Dalamud.Configuration;
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
-internal sealed class Configuration : IPluginConfiguration
+internal sealed class Configuration : ConfigurationBase, IPluginConfiguration
 {
-    private const int CONFIG_VERSION = 2;
+    private const int CONFIG_VERSION = 3;
+    private const ulong DUMMY_LEGACY_CONFIG_ID = 0;
 
     public int Version { get; set; }
 
     public bool Enabled { get; set; }
 
-    public string DefaultGroupName { get; set; } = "Default";
-
-    public bool IncludeNewMounts { get; set; } = true;
-
-    public List<uint> EnabledMounts { get; set; } = new();
-
-    public List<MountGroup> Groups { get; set; } = new();
-
-    public string? MountRouletteGroup { get; set; }
-
-    public string? FlyingMountRouletteGroup { get; set; }
+    public List<CharacterConfig> CharacterConfigs { get; set; } = new();
 
     public static Configuration Init()
     {
@@ -33,16 +23,6 @@ internal sealed class Configuration : IPluginConfiguration
         Mounts.GetInstance(res.DefaultGroupName)!.Update(res.IncludeNewMounts);
         Mounts.Remove(res.DefaultGroupName);
         return res;
-    }
-
-    public MountGroup? GetMountGroup(string name)
-    {
-        if (name == DefaultGroupName)
-        {
-            return new DefaultMountGroup(this);
-        }
-
-        return Groups.FirstOrDefault(x => x.Name == name);
     }
 
     public void Migrate()
@@ -56,6 +36,11 @@ internal sealed class Configuration : IPluginConfiguration
             MountRouletteGroup = defaultGroup;
         }
 
+        if (Version <= 2)
+        {
+            Version = 3;
+            CharacterConfigs.Add(new CharacterConfig { CharacterID = DUMMY_LEGACY_CONFIG_ID, CharacterName = "Legacy Data" });
+        }
         // insert migration code here
 
         if (Version < CONFIG_VERSION)
