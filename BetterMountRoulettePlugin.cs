@@ -73,6 +73,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     private (bool hide, uint actionID) _hideAction;
     internal ISubCommand _command;
     internal ulong? _playerID;
+    internal readonly CastBarHelper _castBarHelper = new();
 
     public unsafe BetterMountRoulettePlugin()
     {
@@ -115,7 +116,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             _useActionHook = Hook<UseActionHandler>.FromAddress(renderAddress, OnUseAction);
             _useActionHook.Enable();
-            CastBarHelper.Enable();
+            _castBarHelper.Enable();
         }
         catch
         {
@@ -316,13 +317,13 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         switch (oldActionType)
         {
             case ActionType.General when isRouletteActionID && actionType != oldActionType:
-                CastBarHelper.Show = false;
-                CastBarHelper.IsFlyingRoulette = oldActionId == 24;
-                CastBarHelper.MountID = actionID;
+                _castBarHelper.Show = false;
+                _castBarHelper.IsFlyingRoulette = oldActionId == 24;
+                _castBarHelper.MountID = actionID;
                 break;
             case ActionType.Mount:
-                CastBarHelper.Show = true;
-                CastBarHelper.MountID = actionID;
+                _castBarHelper.Show = true;
+                _castBarHelper.MountID = actionID;
                 break;
         }
 
@@ -356,7 +357,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             _ = CommandManager.RemoveHandler(MountCommandText);
 
             CastBarHelper.Plugin = null;
-            CastBarHelper.Disable();
+            _castBarHelper.Dispose();
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
             _disposedValue = true;

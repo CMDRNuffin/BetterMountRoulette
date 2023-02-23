@@ -1,7 +1,5 @@
 ﻿namespace BetterMountRoulette.Util;
 
-using BetterMountRoulette;
-
 using Dalamud.Hooking;
 
 using FFXIVClientStructs.FFXIV.Client.UI;
@@ -10,30 +8,35 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
 using Lumina.Text;
 
+using System;
 using System.Linq;
 using System.Reflection;
 
 using Addon = FFXIVClientStructs.Attributes.Addon;
 
-internal static class CastBarHelper
+internal sealed class CastBarHelper : IDisposable
 {
-    private static (int IconID, SeString Text)? _regularMountRoulette;
-    private static (int IconID, SeString Text)? _flyingMountRoulette;
+    private (int IconID, SeString Text)? _regularMountRoulette;
+    private (int IconID, SeString Text)? _flyingMountRoulette;
 
-    private static (long IconID, string Text)? _lastCastInfo;
-    private static uint? _lastMountActionID;
-    private static bool _shouldUpdate;
+    private (long IconID, string Text)? _lastCastInfo;
+    private uint? _lastMountActionID;
+    private bool _shouldUpdate;
 
-    private static bool _initialized;
+    private bool _initialized;
 
     private unsafe delegate void CastBarOnUpdateDelegate(AddonCastBar* castbar, void* a2);
 
-    private static Hook<CastBarOnUpdateDelegate>? _castBarOnUpdate;
+    private Hook<CastBarOnUpdateDelegate>? _castBarOnUpdate;
+    private bool? _show;
+
+    public CastBarHelper()
+    {
+    }
 
     public static BetterMountRoulettePlugin? Plugin;
-    private static bool? _show;
 
-    public static bool? Show
+    public bool? Show
     {
         get => _show;
         set
@@ -43,10 +46,10 @@ internal static class CastBarHelper
         }
     }
 
-    public static uint MountID { get; set; }
-    public static bool IsFlyingRoulette { get; set; }
+    public uint MountID { get; set; }
+    public bool IsFlyingRoulette { get; set; }
 
-    public static unsafe void Enable()
+    public unsafe void Enable()
     {
         if (!_initialized)
         {
@@ -67,12 +70,12 @@ internal static class CastBarHelper
         _castBarOnUpdate.Enable();
     }
 
-    private static bool IsNullOr(this uint? value, uint comparand)
+    private static bool IsNullOr(uint? value, uint comparand)
     {
         return value is null || value == comparand;
     }
 
-    private static unsafe void CastBarOnUpdate(AddonCastBar* castBar, void* a2)
+    private unsafe void CastBarOnUpdate(AddonCastBar* castBar, void* a2)
     {
         _castBarOnUpdate?.Original(castBar, a2);
         if (!_shouldUpdate || !_initialized)
@@ -82,7 +85,7 @@ internal static class CastBarHelper
 
         _shouldUpdate = false;
 
-        if (Show is null || Show is true && _lastMountActionID.IsNullOr(MountID))
+        if (Show is null || (Show is true && IsNullOr(_lastMountActionID, MountID)))
         {
             _show = null;
             _lastMountActionID = null;
@@ -106,7 +109,7 @@ internal static class CastBarHelper
         UpdateCastBarInternal(castBar);
     }
 
-    private static unsafe void UpdateCastBarInternal(AddonCastBar* castBar)
+    private unsafe void UpdateCastBarInternal(AddonCastBar* castBar)
     {
         if (castBar->AtkUnitBase.UldManager.NodeList == null || castBar->AtkUnitBase.UldManager.NodeListCount < 8)
         {
@@ -146,7 +149,7 @@ internal static class CastBarHelper
         }
     }
 
-    private static unsafe void ResetCastBar()
+    private unsafe void ResetCastBar()
     {
         if (_lastCastInfo is null)
         {
@@ -173,14 +176,15 @@ internal static class CastBarHelper
                 name = attr.AddonIdentifiers.FirstOrDefault();
             }
         }
+
         return string.IsNullOrEmpty(name)
             ? default
             : (T*)BetterMountRoulettePlugin.GameGui.GetAddonByName(name, index);
     }
 
-    public static void Disable()
+    public void Dispose()
     {
-        _castBarOnUpdate?.Disable();
+        _castBarOnUpdate?.Dispose();
         ResetCastBar();
     }
 }
