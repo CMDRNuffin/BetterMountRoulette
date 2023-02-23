@@ -25,7 +25,7 @@ internal sealed class WindowManager
         _windows.Draw();
         DebugWindow.Draw();
 
-        foreach (var item in _removeList)
+        foreach (IWindow item in _removeList)
         {
             _windows.Remove(item);
         }
@@ -70,7 +70,7 @@ internal sealed class WindowManager
         Confirm(title, text, ("Yes", confirmed), "No");
     }
 
-    public struct ButtonConfig
+    public readonly struct ButtonConfig
     {
         public readonly string Text;
         public readonly Action? Execute;
@@ -130,7 +130,7 @@ internal sealed class WindowManager
         public void AddDialog(IWindow window)
         {
             _windows.Add((new List<IWindow>(), true));
-            _windows[_windows.Count - 1].Windows.Add(window);
+            _windows[^1].Windows.Add(window);
         }
 
         public void Remove(IWindow window)
@@ -156,16 +156,16 @@ internal sealed class WindowManager
 
         public void Draw()
         {
-            var highestDialogIndex = _windows.FindLastIndex(x => x.IsDialog);
+            int highestDialogIndex = _windows.FindLastIndex(x => x.IsDialog);
             for (int i = 0; i < _windows.Count; ++i)
             {
                 ImGui.BeginDisabled(i < highestDialogIndex);
                 bool isDialog = _windows[i].IsDialog;
-                foreach (var window in _windows[i].Windows)
+                foreach (IWindow window in _windows[i].Windows)
                 {
                     if (isDialog)
                     {
-                        var mainViewportSize = ImGui.GetMainViewport().WorkSize;
+                        Vector2 mainViewportSize = ImGui.GetMainViewport().WorkSize;
                         ImGui.SetNextWindowPos(mainViewportSize / 2, ImGuiCond.Appearing, new Vector2(.5f));
                     }
 

@@ -4,7 +4,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 [SuppressMessage("Performance", "CA1812", Justification = "Instantiated via reflection")]
-internal class DebugCommand : SubCommandBase
+internal sealed class DebugCommand : SubCommandBase
 {
     public override string HelpMessage => "Shows the debug window";
 

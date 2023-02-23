@@ -49,7 +49,7 @@ internal sealed class RenameItemDialog : IWindow
             ImGui.Text("Name:");
             ImGui.SameLine();
             _ = ImGui.InputText("", ref _name, 1000);
-            var nameIsInvalid = !ValidateNameImpl();
+            bool nameIsInvalid = !ValidateNameImpl();
 
             ImGui.BeginDisabled(nameIsInvalid);
             save = ImGui.Button("Save");
@@ -87,7 +87,7 @@ internal sealed class RenameItemDialog : IWindow
     {
         Debug.Assert(!ValidateNameImpl(), "GetValidationErrors should only be called if validation failed");
 
-        var name = GetNormalizedName();
+        string name = GetNormalizedName();
         if (!AllowEmptyName && string.IsNullOrEmpty(name))
         {
             return "Please provide a name.";
@@ -100,7 +100,7 @@ internal sealed class RenameItemDialog : IWindow
 
     private bool ValidateNameImpl()
     {
-        var name = GetNormalizedName();
+        string name = GetNormalizedName();
         if (!AllowEmptyName && string.IsNullOrEmpty(name))
         {
             return false;
@@ -117,6 +117,6 @@ internal sealed class RenameItemDialog : IWindow
     public static string NormalizeWhiteSpace(string value)
     {
         _normalizeWhitespaceRegex ??= new Regex(@"\s+", RegexOptions.Compiled);
-        return _normalizeWhitespaceRegex.Replace(value, " ").Trim(); ;
+        return _normalizeWhitespaceRegex.Replace(value, " ").Trim();
     }
 }

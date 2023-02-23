@@ -68,7 +68,7 @@ internal sealed class ConfigWindow : IWindow
 
                 if (ImGui.BeginTabItem("Mount groups"))
                 {
-                    var mounts = SelectCurrentGroup();
+                    MountGroup mounts = SelectCurrentGroup();
                     DrawMountGroup(mounts);
                     ImGui.EndTabItem();
                 }
@@ -100,14 +100,15 @@ internal sealed class ConfigWindow : IWindow
         }
 
         string selectedCharacterName = "NO CHARACTER SELECTED";
-        foreach (var character in _plugin.Configuration.CharacterConfigs.OrderBy(x => x.CharacterID))
+        foreach (CharacterConfig? character in _plugin.Configuration.CharacterConfigs.OrderBy(x => x.CharacterID))
         {
             StringBuilder sb = new(character.CharacterName);
             if (!string.IsNullOrWhiteSpace(character.CharacterWorld))
             {
                 _ = sb.Append(CultureInfo.CurrentCulture, $" ({character.CharacterWorld})");
             }
-            var text = sb.ToString();
+
+            string text = sb.ToString();
 
             if (ImGui.Selectable(text, _currentCharacter == character.CharacterID))
             {
@@ -126,7 +127,7 @@ internal sealed class ConfigWindow : IWindow
         if (ImGui.Button("Import"))
         {
             Debug.Assert(_currentCharacter is not null);
-            var currentCharacter = _currentCharacter.Value;
+            ulong currentCharacter = _currentCharacter.Value;
             _plugin.WindowManager.Confirm(
                 "Import settings?",
                 $"Import settings from {selectedCharacterName}? This will overwrite all settings for this character!",
@@ -137,7 +138,7 @@ internal sealed class ConfigWindow : IWindow
         if (ImGui.Button("Delete"))
         {
             Debug.Assert(_currentCharacter is not null);
-            var currentCharacter = _currentCharacter.Value;
+            ulong currentCharacter = _currentCharacter.Value;
             _plugin.WindowManager.Confirm(
                 "Delete settings?",
                 $"Delete settings for {selectedCharacterName}? This action cannot be undone!",
@@ -150,12 +151,12 @@ internal sealed class ConfigWindow : IWindow
 
     private void ImportFromCharacter(ulong characterID)
     {
-        _plugin.WindowManager.Confirm("Import", "Imported (not really - TODO)!", "OK");
+        _plugin.WindowManager.Confirm("Import", $"Imported (not really - TODO {characterID})!", "OK");
     }
 
     private void DeleteCharacter(ulong characterID)
     {
-        _plugin.WindowManager.Confirm("Deletion", "Deleted (not really - TODO)!", "OK");
+        _plugin.WindowManager.Confirm("Deletion", $"Deleted (not really - TODO {characterID})!", "OK");
     }
 
     private static void Toggle<T>(ref T? field, T value) where T : struct
@@ -172,7 +173,7 @@ internal sealed class ConfigWindow : IWindow
 
     private MountGroup SelectCurrentGroup()
     {
-        var currentGroup = _currentMountGroup;
+        string? currentGroup = _currentMountGroup;
         _currentMountGroup ??= _plugin.Configuration.DefaultGroupName;
 
         SelectMountGroup(ref _currentMountGroup, "##currentgroup", 150);
@@ -183,40 +184,44 @@ internal sealed class ConfigWindow : IWindow
         }
 
         int mode = 0;
-        const int ModeAdd = 1;
-        const int ModeEdit = 2;
-        const int ModeDelete = 3;
+        const int MODE_ADD = 1;
+        const int MODE_EDIT = 2;
+        const int MODE_DELETE = 3;
 
         ImGui.SameLine();
-        mode = ImGui.Button("Add") ? ModeAdd : mode;
+        mode = ImGui.Button("Add") ? MODE_ADD : mode;
         ImGui.SameLine();
-        mode = ImGui.Button("Edit") ? ModeEdit : mode;
+        mode = ImGui.Button("Edit") ? MODE_EDIT : mode;
         ImGui.SameLine();
         ImGui.BeginDisabled(!_plugin.Configuration.Groups.Any());
-        mode = ImGui.Button("Delete") ? ModeDelete : mode;
+        mode = ImGui.Button("Delete") ? MODE_DELETE : mode;
         ImGui.EndDisabled();
 
         currentGroup = _currentMountGroup;
         switch (mode)
         {
-            case ModeAdd:
-                var dialog = new RenameItemDialog(_plugin.WindowManager, "Add a new group", "", AddGroup);
-                dialog.NormalizeWhitespace = true;
+            case MODE_ADD:
+                var dialog = new RenameItemDialog(_plugin.WindowManager, "Add a new group", "", AddGroup)
+                {
+                    NormalizeWhitespace = true
+                };
                 dialog.SetValidation(x => ValidateGroup(x, isNew: true), x => "A group with that name already exists.");
                 _plugin.WindowManager.OpenDialog(dialog);
                 break;
-            case ModeEdit:
+            case MODE_EDIT:
                 dialog = new RenameItemDialog(
                     _plugin.WindowManager,
                     $"Rename {_currentMountGroup}",
                     _currentMountGroup,
-                    (newName) => RenameMountGroup(_currentMountGroup, newName));
-                dialog.NormalizeWhitespace = true;
+                    (newName) => RenameMountGroup(_currentMountGroup, newName))
+                {
+                    NormalizeWhitespace = true
+                };
                 dialog.SetValidation(x => ValidateGroup(x, isNew: false), x => "Another group with that name already exists.");
 
                 _plugin.WindowManager.OpenDialog(dialog);
                 break;
-            case ModeDelete:
+            case MODE_DELETE:
                 _plugin.WindowManager.Confirm(
                     "Confirm deletion of mount group",
                     $"Are you sure you want to delete {currentGroup}?\nThis action can NOT be undone.",
@@ -254,7 +259,7 @@ internal sealed class ConfigWindow : IWindow
     {
         if (name == _plugin.Configuration.DefaultGroupName)
         {
-            var group = _plugin.Configuration.Groups.FirstOrDefault();
+            MountGroup? group = _plugin.Configuration.Groups.FirstOrDefault();
             if (group is null)
             {
                 // can't delete the last group
@@ -294,7 +299,7 @@ internal sealed class ConfigWindow : IWindow
 
     private void RenameMountGroup(string currentMountGroup, string newName)
     {
-        var config = _plugin.Configuration;
+        Configuration config = _plugin.Configuration;
         if (config.MountRouletteGroup == currentMountGroup)
         {
             config.MountRouletteGroup = newName;
@@ -311,7 +316,7 @@ internal sealed class ConfigWindow : IWindow
         }
         else
         {
-            var group = config.Groups.First(x => x.Name == currentMountGroup);
+            MountGroup group = config.Groups.First(x => x.Name == currentMountGroup);
             group.Name = newName;
         }
 
@@ -325,10 +330,10 @@ internal sealed class ConfigWindow : IWindow
 
     private void AddGroup(string name)
     {
-        var config = _plugin.Configuration;
+        Configuration config = _plugin.Configuration;
         config.Groups.Add(new MountGroup { Name = name });
         _currentMountGroup = name;
-        var inst = Mounts.GetInstance(name)!;
+        Mounts inst = Mounts.GetInstance(name)!;
         inst.Filter(false, null, null);
         inst.Update(true);
     }
@@ -341,7 +346,7 @@ internal sealed class ConfigWindow : IWindow
             return;
         }
 
-        var mounts = Mounts.GetInstance(group.Name)!;
+        Mounts? mounts = Mounts.GetInstance(group.Name)!;
 
         if (mounts is null)
         {
@@ -358,7 +363,7 @@ internal sealed class ConfigWindow : IWindow
             mounts.UpdateUnlocked(enableNewMounts);
         }
 
-        var pages = mounts.PageCount;
+        int pages = mounts.PageCount;
         if (pages == 0)
         {
             ImGui.Text("Please unlock at least one mount.");
@@ -372,7 +377,7 @@ internal sealed class ConfigWindow : IWindow
                     mounts.RenderItems(page);
                     mounts.Save(group);
 
-                    var currentPage = page;
+                    int currentPage = page;
                     (bool Select, int? Page)? maybeInfo =
                         Buttons("Select all", "Unselect all", "Select page", "Unselect page") switch
                         {
@@ -450,7 +455,7 @@ internal sealed class ConfigWindow : IWindow
                 groupName = _plugin.Configuration.DefaultGroupName;
             }
 
-            foreach (var group in _plugin.Configuration.Groups)
+            foreach (MountGroup group in _plugin.Configuration.Groups)
             {
                 if (ImGui.Selectable(group.Name, group.Name == groupName))
                 {

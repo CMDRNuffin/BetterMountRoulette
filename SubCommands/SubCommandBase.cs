@@ -35,7 +35,7 @@ internal abstract class SubCommandBase : ISubCommand
             return true;
         }
 
-        if (parameter.Length >= 1 && SubCommands.TryGetValue(parameter[0], out var subCommand))
+        if (parameter.Length >= 1 && SubCommands.TryGetValue(parameter[0], out ISubCommand? subCommand))
         {
             return subCommand.Execute(parameter[1..]);
         }

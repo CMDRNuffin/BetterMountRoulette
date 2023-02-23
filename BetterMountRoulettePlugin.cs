@@ -9,6 +9,7 @@ using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Hooking;
@@ -30,12 +31,12 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
     public string Name => "Better Mount Roulette";
 
-    public const string CommandText = "/pbmr";
+    public const string COMMAND_TEXT = "/pbmr";
 
-    public const string MountCommandText = "/pmount";
+    public const string MOUNT_COMMAND_TEXT = "/pmount";
 
     ////public const string CommandHelpMessage = $"Does all the things. Type \"{CommandText} help\" for more information.";
-    public const string CommandHelpMessage = $"Open the config window.";
+    public const string COMMAND_HELP_MESSAGE = $"Open the config window.";
 
     [PluginService]
     internal static DalamudPluginInterface DalamudPluginInterface { get; private set; } = null!;
@@ -71,9 +72,9 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     private readonly Hook<UseActionHandler>? _useActionHook;
     internal readonly WindowManager WindowManager;
     private (bool hide, uint actionID) _hideAction;
-    internal ISubCommand _command;
-    internal ulong? _playerID;
-    internal readonly CastBarHelper _castBarHelper = new();
+    private readonly ISubCommand _command;
+    private ulong? _playerID;
+    private readonly CastBarHelper _castBarHelper = new();
 
     public unsafe BetterMountRoulettePlugin()
     {
@@ -98,15 +99,15 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             DalamudPluginInterface.UiBuilder.OpenConfigUi += WindowManager.OpenConfigWindow;
 
-            _ = CommandManager.AddHandler(CommandText, new CommandInfo(HandleCommand) { HelpMessage = CommandHelpMessage });
+            _ = CommandManager.AddHandler(COMMAND_TEXT, new CommandInfo(HandleCommand) { HelpMessage = COMMAND_HELP_MESSAGE });
             _ = CommandManager.AddHandler(
-                MountCommandText,
+                MOUNT_COMMAND_TEXT,
                 new CommandInfo(HandleMountCommand)
                 {
                     HelpMessage = "Mount a random mount from the specified group, e.g. \"/pmount My Group\" summons a mount from the \"My Group\" group"
                 });
 
-            var renderAddress = (nint)ActionManager.Addresses.UseAction.Value;
+            nint renderAddress = (nint)ActionManager.Addresses.UseAction.Value;
 
             if (renderAddress is 0)
             {
@@ -140,7 +141,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
     private void LoadCharacterConfig()
     {
-        var player = ClientState.LocalPlayer;
+        PlayerCharacter? player = ClientState.LocalPlayer;
         if (player is null)
         {
             return;
@@ -148,7 +149,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
         _playerID = ClientState.LocalContentId;
         var charData = (Name: player.Name.ToString(), World: player.HomeWorld.GameData!.Name.ToString());
-        var playerConfig = Configuration.CharacterConfigs.FirstOrDefault(c => c.CharacterID == _playerID);
+        CharacterConfig? playerConfig = Configuration.CharacterConfigs.FirstOrDefault(c => c.CharacterID == _playerID);
         bool isNew = false;
         if (playerConfig is null)
         {
@@ -181,7 +182,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         Mounts.Load(playerConfig);
         if (isNew)
         {
-            var inst = Mounts.GetInstance(playerConfig.DefaultGroupName)!;
+            Mounts inst = Mounts.GetInstance(playerConfig.DefaultGroupName)!;
             inst.Update(true);
             inst.UpdateUnlocked(true);
         }
@@ -216,7 +217,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             return;
         }
 
-        var mount = mountGroup.GetRandom(ActionManager.Instance());
+        uint mount = mountGroup.GetRandom(ActionManager.Instance());
         if (mount != 0)
         {
             _hideAction = (true, actionID: 9);
@@ -233,7 +234,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     {
         // todo: correctly handle arguments, including
         // [/foo "bar"] being equal to [/foo bar] and the like
-        var parts = string.IsNullOrEmpty(arguments) ? Array.Empty<string>() : arguments.Split(' ');
+        string[] parts = string.IsNullOrEmpty(arguments) ? Array.Empty<string>() : arguments.Split(' ');
         try
         {
             bool success = _command.Execute(parts);
@@ -261,15 +262,15 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             .Select(x => (ISubCommand)Activator.CreateInstance(x)!)
             .ToList();
         Dictionary<string, ISubCommand> commands = new(StringComparer.InvariantCultureIgnoreCase);
-        foreach (var command in allCommands)
+        foreach (ISubCommand? command in allCommands)
         {
-            var fullCommand = (command.ParentCommand + " " + command.CommandName).Trim();
+            string fullCommand = (command.ParentCommand + " " + command.CommandName).Trim();
             commands.Add(fullCommand, command);
             command.Plugin = this;
-            command.FullCommand = (CommandText + " " + command.ParentCommand).Trim();
+            command.FullCommand = (COMMAND_TEXT + " " + command.ParentCommand).Trim();
         }
 
-        foreach (var command in allCommands)
+        foreach (ISubCommand? command in allCommands)
         {
             commands[command.ParentCommand ?? string.Empty].AddSubCommand(command);
         }
@@ -279,7 +280,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
     private unsafe byte OnUseAction(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID, uint a4, uint a5, uint a6, void* a7)
     {
-        var hideAction = _hideAction;
+        (bool hide, uint actionID) hideAction = _hideAction;
         _hideAction = (false, 0);
 
         if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || !Configuration.Enabled)
@@ -294,12 +295,12 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             _ => null,
         };
 
-        var isRouletteActionID = actionID is 9 or 24;
-        var oldActionType = actionType;
-        var oldActionId = actionID;
+        bool isRouletteActionID = actionID is 9 or 24;
+        ActionType oldActionType = actionType;
+        uint oldActionId = actionID;
         if (groupName is not null)
         {
-            var newActionID = Mounts.GetInstance(groupName)!.GetRandom(actionManager);
+            uint newActionID = Mounts.GetInstance(groupName)!.GetRandom(actionManager);
             if (newActionID != 0)
             {
                 actionType = ActionType.Mount;
@@ -327,7 +328,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 break;
         }
 
-        var result = _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
+        byte result = _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
 
         return result;
     }
@@ -353,8 +354,8 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             TextureHelper.Dispose();
 
-            _ = CommandManager.RemoveHandler(CommandText);
-            _ = CommandManager.RemoveHandler(MountCommandText);
+            _ = CommandManager.RemoveHandler(COMMAND_TEXT);
+            _ = CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);
 
             CastBarHelper.Plugin = null;
             _castBarHelper.Dispose();

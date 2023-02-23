@@ -27,14 +27,14 @@ internal sealed class BaseCommand : SubCommandBase
 
     private string BuildHelpMessage()
     {
-        var sb = new StringBuilder()
+        StringBuilder sb = new StringBuilder()
             .AppendLine("Usage:")
             .AppendLine(FullCommand)
             .AppendLine("  -> opens the config window")
             .Append(FullCommand).AppendLine(" help")
             .Append("  -> prints this help");
 
-        var modes = SubCommands.Keys.Where(x => !string.IsNullOrEmpty(x))
+        string[] modes = SubCommands.Keys.Where(x => !string.IsNullOrEmpty(x))
             .Select(x => x.ToLower(CultureInfo.CurrentCulture)).ToArray();
         if (modes.Any())
         {

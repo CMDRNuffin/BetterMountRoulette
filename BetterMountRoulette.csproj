@@ -6,7 +6,7 @@
     <PackageProjectUrl>https://github.com/CMDRNuffin/BetterMountRoulette</PackageProjectUrl>
     <Configurations>Release;Debug</Configurations>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net7.0-windows</TargetFramework>
     <Platforms>x64</Platforms>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -15,7 +15,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>dist</OutputPath>
     <GenerateDependencyFile>false</GenerateDependencyFile>
-    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-all</AnalysisLevel>
   </PropertyGroup>
 

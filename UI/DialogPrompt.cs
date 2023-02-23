@@ -22,13 +22,13 @@ internal sealed class DialogPrompt : IWindow
         bool isOpen = true;
         if (ImGui.Begin(_title, ref isOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            foreach (var line in _text.Split('\n'))
+            foreach (string line in _text.Split('\n'))
             {
                 CenterText(line);
             }
 
             bool hasButton = false;
-            foreach (var button in _buttons)
+            foreach (WindowManager.ButtonConfig button in _buttons)
             {
                 if (hasButton)
                 {
@@ -53,8 +53,8 @@ internal sealed class DialogPrompt : IWindow
 
     private static void CenterText(string text)
     {
-        var windowWidth = ImGui.GetWindowSize().X;
-        var textWidth = ImGui.CalcTextSize(text).X;
+        float windowWidth = ImGui.GetWindowSize().X;
+        float textWidth = ImGui.CalcTextSize(text).X;
 
         ImGui.SetCursorPosX((windowWidth - textWidth) * 0.5f);
         ImGui.Text(text);

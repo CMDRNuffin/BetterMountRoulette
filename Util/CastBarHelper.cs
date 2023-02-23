@@ -5,6 +5,7 @@ using Dalamud.Hooking;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
+using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
 using Lumina.Text;
 
@@ -54,7 +55,7 @@ internal sealed class CastBarHelper : IDisposable
         if (!_initialized)
         {
             _initialized = true;
-            if (!BetterMountRoulettePlugin.SigScanner.TryScanText("48 83 EC 38 48 8B 92", out var address))
+            if (!BetterMountRoulettePlugin.SigScanner.TryScanText("48 83 EC 38 48 8B 92", out nint address))
             {
                 return;
             }
@@ -95,8 +96,8 @@ internal sealed class CastBarHelper : IDisposable
 
         if (Show is false && _regularMountRoulette is null)
         {
-            var sheet = BetterMountRoulettePlugin.GameData.GetExcelSheet<GeneralAction>();
-            var mountRouletteAction = sheet!.GetRow(9);
+            ExcelSheet<GeneralAction>? sheet = BetterMountRoulettePlugin.GameData.GetExcelSheet<GeneralAction>();
+            GeneralAction? mountRouletteAction = sheet!.GetRow(9);
             _regularMountRoulette = (mountRouletteAction!.Icon, mountRouletteAction.Name);
 
             mountRouletteAction = sheet.GetRow(24);
@@ -117,7 +118,7 @@ internal sealed class CastBarHelper : IDisposable
             return;
         }
 
-        AtkComponentNode* icon = (AtkComponentNode*)castBar->AtkUnitBase.GetNodeById(8u);
+        var icon = (AtkComponentNode*)castBar->AtkUnitBase.GetNodeById(8u);
         AtkTextNode* skillNameText = castBar->AtkUnitBase.GetTextNodeById(4u);
         var component = (AtkComponentIcon*)icon->Component;
 
@@ -129,9 +130,9 @@ internal sealed class CastBarHelper : IDisposable
             _lastCastInfo = (component->IconId, skillNameText->NodeText.ToString());
 
             // replace cast bar contents with mount roulette information.
-            var mountRoulette = IsFlyingRoulette ? _flyingMountRoulette : _regularMountRoulette;
-            var iconID = mountRoulette!.Value.IconID;
-            var text = mountRoulette.Value.Text.RawData;
+            (int IconID, SeString Text)? mountRoulette = IsFlyingRoulette ? _flyingMountRoulette : _regularMountRoulette;
+            int iconID = mountRoulette!.Value.IconID;
+            ReadOnlySpan<byte> text = mountRoulette.Value.Text.RawData;
 
             component->IconId = iconID;
             component->IconImage->LoadIconTexture(iconID, 0);
@@ -157,7 +158,7 @@ internal sealed class CastBarHelper : IDisposable
             return;
         }
 
-        var castBar = GetUnitBase<AddonCastBar>();
+        AddonCastBar* castBar = GetUnitBase<AddonCastBar>();
         if (castBar is null)
         {
             return;
