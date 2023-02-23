@@ -20,7 +20,7 @@ internal sealed class DialogPrompt : IWindow
     public void Draw()
     {
         bool isOpen = true;
-        if (ImGui.Begin(_title, ref isOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        if (ImGui.Begin(_title, ref isOpen, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
         {
             foreach (string line in _text.Split('\n'))
             {

@@ -1,5 +1,7 @@
 ﻿namespace BetterMountRoulette.UI;
 
+using BetterMountRoulette.Util;
+
 using ImGuiNET;
 
 using System;
@@ -10,12 +12,14 @@ using System.Numerics;
 internal sealed class WindowManager
 {
     private readonly BetterMountRoulettePlugin _plugin;
+    private readonly Services _services;
     private readonly WindowStack _windows = new();
     private readonly List<IWindow> _removeList = new();
 
-    public WindowManager(BetterMountRoulettePlugin plugin)
+    public WindowManager(BetterMountRoulettePlugin plugin, Services services)
     {
         _plugin = plugin;
+        _services = services;
     }
 
     public DebugWindow DebugWindow { get; } = new();
@@ -50,7 +54,7 @@ internal sealed class WindowManager
 
     public void OpenConfigWindow()
     {
-        var configWindow = new ConfigWindow(_plugin);
+        var configWindow = new ConfigWindow(_plugin, _services);
         if (_windows.Contains(configWindow))
         {
             return;
@@ -160,19 +164,25 @@ internal sealed class WindowManager
             for (int i = 0; i < _windows.Count; ++i)
             {
                 ImGui.BeginDisabled(i < highestDialogIndex);
-                bool isDialog = _windows[i].IsDialog;
-                foreach (IWindow window in _windows[i].Windows)
+
+                try
                 {
-                    if (isDialog)
+                    bool isDialog = _windows[i].IsDialog;
+                    foreach (IWindow window in _windows[i].Windows)
                     {
-                        Vector2 mainViewportSize = ImGui.GetMainViewport().WorkSize;
-                        ImGui.SetNextWindowPos(mainViewportSize / 2, ImGuiCond.Appearing, new Vector2(.5f));
+                        if (isDialog)
+                        {
+                            Vector2 mainViewportSize = ImGui.GetMainViewport().WorkSize;
+                            ImGui.SetNextWindowPos(mainViewportSize / 2, ImGuiCond.Appearing, new Vector2(.5f));
+                        }
+
+                        window.Draw();
                     }
-
-                    window.Draw();
                 }
-
-                ImGui.EndDisabled();
+                finally
+                {
+                    ImGui.EndDisabled();
+                }
             }
         }
     }

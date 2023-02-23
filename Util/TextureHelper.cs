@@ -7,25 +7,30 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-internal static class TextureHelper
+internal sealed class TextureHelper
 {
-    private static readonly Dictionary<string, TextureWrap> _loadedTextures = new();
-    private static readonly Dictionary<uint, TextureWrap> _loadedIconTextures = new();
+    private readonly Dictionary<string, TextureWrap> _loadedTextures = new();
+    private readonly Dictionary<uint, TextureWrap> _loadedIconTextures = new();
+    private readonly Services _services;
+    private DataManager DataManager => _services.DataManager;
 
-    private static DataManager DataManager => BetterMountRoulettePlugin.DataManager;
+    public TextureHelper(Services services)
+    {
+        _services = services;
+    }
 
-    public static nint LoadUldTexture(string name)
+    public nint LoadUldTexture(string name)
     {
         string path = $"ui/uld/{name}_hr1.tex";
         return LoadTexture(_loadedTextures, path, DataManager.GetImGuiTexture);
     }
 
-    public static nint LoadIconTexture(uint id)
+    public nint LoadIconTexture(uint id)
     {
         return LoadTexture(_loadedIconTextures, id, DataManager.GetImGuiTextureIcon);
     }
 
-    public static void Dispose()
+    public void Dispose()
     {
         var values = _loadedTextures.Values.Concat(_loadedIconTextures.Values).ToList();
         _loadedTextures.Clear();

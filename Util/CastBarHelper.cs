@@ -30,12 +30,12 @@ internal sealed class CastBarHelper : IDisposable
 
     private Hook<CastBarOnUpdateDelegate>? _castBarOnUpdate;
     private bool? _show;
+    private readonly Services _services;
 
-    public CastBarHelper()
+    public CastBarHelper(Services services)
     {
+        _services = services;
     }
-
-    public static BetterMountRoulettePlugin? Plugin;
 
     public bool? Show
     {
@@ -55,7 +55,7 @@ internal sealed class CastBarHelper : IDisposable
         if (!_initialized)
         {
             _initialized = true;
-            if (!BetterMountRoulettePlugin.SigScanner.TryScanText("48 83 EC 38 48 8B 92", out nint address))
+            if (!_services.SigScanner.TryScanText("48 83 EC 38 48 8B 92", out nint address))
             {
                 return;
             }
@@ -96,7 +96,7 @@ internal sealed class CastBarHelper : IDisposable
 
         if (Show is false && _regularMountRoulette is null)
         {
-            ExcelSheet<GeneralAction>? sheet = BetterMountRoulettePlugin.GameData.GetExcelSheet<GeneralAction>();
+            ExcelSheet<GeneralAction>? sheet = _services.GameData.GetExcelSheet<GeneralAction>();
             GeneralAction? mountRouletteAction = sheet!.GetRow(9);
             _regularMountRoulette = (mountRouletteAction!.Icon, mountRouletteAction.Name);
 
@@ -121,8 +121,6 @@ internal sealed class CastBarHelper : IDisposable
         var icon = (AtkComponentNode*)castBar->AtkUnitBase.GetNodeById(8u);
         AtkTextNode* skillNameText = castBar->AtkUnitBase.GetTextNodeById(4u);
         var component = (AtkComponentIcon*)icon->Component;
-
-        BetterMountRoulettePlugin.Log($"Casting {castBar->CastName} | {skillNameText->NodeText}");
 
         if (Show is false)
         {
@@ -168,7 +166,7 @@ internal sealed class CastBarHelper : IDisposable
         UpdateCastBarInternal(castBar);
     }
 
-    private unsafe static T* GetUnitBase<T>(string? name = null, int index = 1) where T : unmanaged
+    private unsafe T* GetUnitBase<T>(string? name = null, int index = 1) where T : unmanaged
     {
         if (string.IsNullOrEmpty(name))
         {
@@ -180,7 +178,7 @@ internal sealed class CastBarHelper : IDisposable
 
         return string.IsNullOrEmpty(name)
             ? default
-            : (T*)BetterMountRoulettePlugin.GameGui.GetAddonByName(name, index);
+            : (T*)_services.GameGui.GetAddonByName(name, index);
     }
 
     public void Dispose()

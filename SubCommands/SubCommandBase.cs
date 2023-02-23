@@ -1,5 +1,7 @@
 ﻿namespace BetterMountRoulette.SubCommands;
 
+using BetterMountRoulette.Util;
+
 using Dalamud.Game.Gui;
 
 using System;
@@ -18,9 +20,11 @@ internal abstract class SubCommandBase : ISubCommand
 
     public BetterMountRoulettePlugin Plugin { get; set; } = null!;
 
+    public Services Services { get; set; } = null!;
+
     protected Dictionary<string, ISubCommand> SubCommands { get; } = new(StringComparer.InvariantCultureIgnoreCase);
 
-    protected static ChatGui Chat => BetterMountRoulettePlugin.Chat;
+    protected ChatGui Chat => Services.Chat;
 
     public void AddSubCommand(ISubCommand child)
     {
@@ -48,7 +52,7 @@ internal abstract class SubCommandBase : ISubCommand
         Chat.Print(HelpMessage);
     }
 
-    protected static void DebugOutput(string message)
+    protected void DebugOutput(string message)
     {
         Chat.Print(message);
     }

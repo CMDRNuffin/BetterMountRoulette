@@ -1,5 +1,7 @@
 ﻿namespace BetterMountRoulette.SubCommands;
 
+using BetterMountRoulette.Util;
+
 internal interface ISubCommand
 {
     string HelpMessage { get; }
@@ -11,6 +13,8 @@ internal interface ISubCommand
     public string FullCommand { set; }
 
     public BetterMountRoulettePlugin Plugin { get; set; }
+
+    public Services Services { get; set; }
 
     void AddSubCommand(ISubCommand child);
 

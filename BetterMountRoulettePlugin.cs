@@ -1,23 +1,13 @@
 ﻿namespace BetterMountRoulette;
 
 using BetterMountRoulette.Config;
+using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.SubCommands;
 using BetterMountRoulette.UI;
 using BetterMountRoulette.Util;
 
-using Dalamud.Data;
-using Dalamud.Game;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
-using Dalamud.Hooking;
-using Dalamud.IoC;
 using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Client.Game;
-
-using Lumina;
 
 using System;
 using System.Collections.Generic;
@@ -38,86 +28,65 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     ////public const string CommandHelpMessage = $"Does all the things. Type \"{CommandText} help\" for more information.";
     public const string COMMAND_HELP_MESSAGE = $"Open the config window.";
 
-    [PluginService]
-    internal static DalamudPluginInterface DalamudPluginInterface { get; private set; } = null!;
+    internal readonly Configuration Configuration;
 
-    [PluginService]
-    internal static SigScanner SigScanner { get; private set; } = null!;
-
-    [PluginService]
-    internal static CommandManager CommandManager { get; private set; } = null!;
-
-    [PluginService]
-    public static GameGui GameGui { get; private set; } = null!;
-
-    internal static GameData GameData => DataManager.GameData;
-
-    [PluginService]
-    public static DataManager DataManager { get; private set; } = null!;
-
-    [PluginService]
-    internal static ChatGui Chat { get; private set; } = null!;
-
-    [PluginService]
-    internal static Condition Condition { get; private set; } = null!;
-
-    [PluginService]
-    internal static ClientState ClientState { get; private set; } = null!;
-
-    [PluginService]
-    internal static Framework Framework { get; private set; } = null!;
-
-    internal Configuration Configuration { get; private set; }
-
-    private readonly Hook<UseActionHandler>? _useActionHook;
-    internal readonly WindowManager WindowManager;
-    private (bool hide, uint actionID) _hideAction;
-    private readonly ISubCommand _command;
-    private ulong? _playerID;
-    private readonly CastBarHelper _castBarHelper = new();
-
-    public unsafe BetterMountRoulettePlugin()
+    internal CharacterConfig? CharacterConfig
     {
-        CastBarHelper.Plugin = this;
+        get => _actionHandler.CharacterConfig;
+        private set => _actionHandler.CharacterConfig = value;
+    }
 
-        WindowManager = new WindowManager(this);
-        Mounts.WindowManager = WindowManager;
-        DalamudPluginInterface.UiBuilder.Draw += WindowManager.Draw;
-        ClientState.Login += OnLogin;
-        Framework.Update += OnFrameworkUpdate;
+    private readonly Services _services;
+    private readonly ActionHandler _actionHandler;
+    internal readonly WindowManager WindowManager;
+    internal readonly TextureHelper TextureHelper;
+    internal readonly MountRegistry MountRegistry;
+    internal readonly CharacterManager CharacterManager;
+    private readonly ISubCommand _command;
+
+    public unsafe BetterMountRoulettePlugin(DalamudPluginInterface pluginInterface)
+    {
+        if (pluginInterface is null)
+        {
+            throw new ArgumentNullException(nameof(pluginInterface));
+        }
+
+        _services = new Services(pluginInterface);
+        TextureHelper = new TextureHelper(_services);
+        MountRegistry = new MountRegistry(_services);
+
+        WindowManager = new WindowManager(this, _services);
+        pluginInterface.UiBuilder.Draw += WindowManager.Draw;
 
         try
         {
-            Configuration config = DalamudPluginInterface.GetPluginConfig() as Configuration ?? Configuration.Init();
-            config.Migrate();
+            _actionHandler = new ActionHandler(_services, WindowManager, MountRegistry);
+            Configuration config = pluginInterface.GetPluginConfig() as Configuration ?? Configuration.Init();
+            ConfigVersionManager.DoMigration(config);
             SaveConfig(config);
 
             Configuration = config;
-            Mounts.Load(config);
+            CharacterManager = new CharacterManager(_services, config);
+
+            _services.Login += OnLogin;
+            if (_services.ClientState.LocalPlayer is not null)
+            {
+                OnLogin(this, EventArgs.Empty);
+            }
 
             _command = InitCommands();
 
-            DalamudPluginInterface.UiBuilder.OpenConfigUi += WindowManager.OpenConfigWindow;
+            pluginInterface.UiBuilder.OpenConfigUi += WindowManager.OpenConfigWindow;
 
-            _ = CommandManager.AddHandler(COMMAND_TEXT, new CommandInfo(HandleCommand) { HelpMessage = COMMAND_HELP_MESSAGE });
-            _ = CommandManager.AddHandler(
+            _ = _services.CommandManager.AddHandler(
+                COMMAND_TEXT,
+                new CommandInfo(HandleCommand) { HelpMessage = COMMAND_HELP_MESSAGE });
+            _ = _services.CommandManager.AddHandler(
                 MOUNT_COMMAND_TEXT,
-                new CommandInfo(HandleMountCommand)
+                new CommandInfo(_actionHandler.HandleMountCommand)
                 {
                     HelpMessage = "Mount a random mount from the specified group, e.g. \"/pmount My Group\" summons a mount from the \"My Group\" group"
                 });
-
-            nint renderAddress = (nint)ActionManager.Addresses.UseAction.Value;
-
-            if (renderAddress is 0)
-            {
-                WindowManager.DebugWindow.Broken("Unable to load UseAction address");
-                return;
-            }
-
-            _useActionHook = Hook<UseActionHandler>.FromAddress(renderAddress, OnUseAction);
-            _useActionHook.Enable();
-            _castBarHelper.Enable();
         }
         catch
         {
@@ -126,108 +95,60 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         }
     }
 
-    private void OnFrameworkUpdate(Framework framework)
+    private void ImportCharacterConfig(int? @override = null)
     {
-        if (_playerID is null)
+        switch (@override ?? Configuration.NewCharacterHandling)
         {
-            LoadCharacterConfig();
+            case Configuration.NewCharacterHandlingModes.IMPORT:
+                _ = CharacterManager.Import(Configuration.DUMMY_LEGACY_CONFIG_ID);
+                break;
+            case Configuration.NewCharacterHandlingModes.BLANK:
+                return;
+            case Configuration.NewCharacterHandlingModes.ASK:
+            default: /* default to "ask" for invalid values */
+                WindowManager.OpenDialog(new ConfirmImportCharacterDialog(WindowManager, ConfirmAction));
+                break;
+        }
+
+        void ConfirmAction(bool import, bool remember)
+        {
+            int mode = import
+                ? Configuration.NewCharacterHandlingModes.IMPORT
+                : Configuration.NewCharacterHandlingModes.BLANK;
+            if (import)
+            {
+                ImportCharacterConfig(mode);
+            }
+
+            if (remember)
+            {
+                Configuration.NewCharacterHandling = mode;
+            }
         }
     }
 
     private void OnLogin(object? sender, EventArgs e)
     {
-        _playerID = null;
-    }
-
-    private void LoadCharacterConfig()
-    {
-        PlayerCharacter? player = ClientState.LocalPlayer;
-        if (player is null)
+        if (_services.ClientState.LocalPlayer is { } player)
         {
-            return;
-        }
-
-        _playerID = ClientState.LocalContentId;
-        var charData = (Name: player.Name.ToString(), World: player.HomeWorld.GameData!.Name.ToString());
-        CharacterConfig? playerConfig = Configuration.CharacterConfigs.FirstOrDefault(c => c.CharacterID == _playerID);
-        bool isNew = false;
-        if (playerConfig is null)
-        {
-            isNew = true;
-            playerConfig = new CharacterConfig
+            CharacterConfig = CharacterManager.GetCharacterConfig(_services.ClientState.LocalContentId, player);
+            if (CharacterConfig.IsNew && Configuration.CharacterConfigs.ContainsKey(Configuration.DUMMY_LEGACY_CONFIG_ID))
             {
-                CharacterID = _playerID.Value,
-                CharacterName = charData.Name,
-                CharacterWorld = charData.World,
-            };
-
-            if (!Configuration.CharacterConfigs.Any())
-            {
-                // initial migration from one global entry to character-specific
-                // (uses first logged-in character)
-                isNew = false;
-                playerConfig.CopyFrom(Configuration);
+                ImportCharacterConfig();
+                CharacterConfig.IsNew = false;
             }
-
-            Configuration.CharacterConfigs.Add(playerConfig);
-            SaveConfig(Configuration);
-        }
-        else if (charData != (playerConfig.CharacterName, playerConfig.CharacterWorld))
-        {
-            playerConfig.CharacterName = charData.Name;
-            playerConfig.CharacterWorld = charData.World;
-            SaveConfig(Configuration);
-        }
-
-        Mounts.Load(playerConfig);
-        if (isNew)
-        {
-            Mounts inst = Mounts.GetInstance(playerConfig.DefaultGroupName)!;
-            inst.Update(true);
-            inst.UpdateUnlocked(true);
         }
     }
 
     [Conditional("DEBUG")]
-    internal static void Log(string message)
+    internal void Log(string message)
     {
-        CastBarHelper.Plugin!.WindowManager.DebugWindow.AddText(message);
+        WindowManager.DebugWindow.AddText(message);
     }
 
-    internal static void SaveConfig(Configuration configuration)
+    internal void SaveConfig(Configuration configuration)
     {
-        DalamudPluginInterface.SavePluginConfig(configuration);
-    }
-
-    private unsafe void HandleMountCommand(string command, string arguments)
-    {
-        if (string.IsNullOrWhiteSpace(arguments))
-        {
-            Chat.PrintError("Please specify a mount group");
-            Chat.UpdateQueue();
-            return;
-        }
-
-        arguments = RenameItemDialog.NormalizeWhiteSpace(arguments);
-        var mountGroup = Mounts.GetInstance(arguments);
-        if (mountGroup == null)
-        {
-            Chat.PrintError($"Mount group \"{arguments}\" not found.");
-            Chat.UpdateQueue();
-            return;
-        }
-
-        uint mount = mountGroup.GetRandom(ActionManager.Instance());
-        if (mount != 0)
-        {
-            _hideAction = (true, actionID: 9);
-            _ = ActionManager.Instance()->UseAction(ActionType.Mount, mount);
-        }
-        else
-        {
-            Chat.PrintError($"Unable to summon mount from group \"{arguments}\".");
-            Chat.UpdateQueue();
-        }
+        _services.DalamudPluginInterface.SavePluginConfig(configuration);
     }
 
     private void HandleCommand(string command, string arguments)
@@ -241,17 +162,17 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             if (!success)
             {
-                Chat.PrintError($"Invalid command: {command} {arguments}");
+                _services.Chat.PrintError($"Invalid command: {command} {arguments}");
             }
         }
         catch (Exception e)
         {
-            Chat.PrintError(e.Message);
+            _services.Chat.PrintError(e.Message);
             throw;
         }
         finally
         {
-            Chat.UpdateQueue();
+            _services.Chat.UpdateQueue();
         }
     }
 
@@ -278,63 +199,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         return commands[string.Empty];
     }
 
-    private unsafe byte OnUseAction(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID, uint a4, uint a5, uint a6, void* a7)
-    {
-        (bool hide, uint actionID) hideAction = _hideAction;
-        _hideAction = (false, 0);
-
-        if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || !Configuration.Enabled)
-        {
-            return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
-        }
-
-        string? groupName = (actionID, actionType) switch
-        {
-            (9, ActionType.General) => Configuration.MountRouletteGroup,
-            (24, ActionType.General) => Configuration.FlyingMountRouletteGroup,
-            _ => null,
-        };
-
-        bool isRouletteActionID = actionID is 9 or 24;
-        ActionType oldActionType = actionType;
-        uint oldActionId = actionID;
-        if (groupName is not null)
-        {
-            uint newActionID = Mounts.GetInstance(groupName)!.GetRandom(actionManager);
-            if (newActionID != 0)
-            {
-                actionType = ActionType.Mount;
-                actionID = newActionID;
-            }
-        }
-
-        if (hideAction.hide)
-        {
-            oldActionId = _hideAction.actionID;
-            oldActionType = ActionType.General;
-            isRouletteActionID = true;
-        }
-
-        switch (oldActionType)
-        {
-            case ActionType.General when isRouletteActionID && actionType != oldActionType:
-                _castBarHelper.Show = false;
-                _castBarHelper.IsFlyingRoulette = oldActionId == 24;
-                _castBarHelper.MountID = actionID;
-                break;
-            case ActionType.Mount:
-                _castBarHelper.Show = true;
-                _castBarHelper.MountID = actionID;
-                break;
-        }
-
-        byte result = _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
-
-        return result;
-    }
-
-    public unsafe delegate byte UseActionHandler(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID = 3758096384U, uint a4 = 0U, uint a5 = 0U, uint a6 = 0U, void* a7 = default);
-
     private void Dispose(bool disposing)
     {
         if (!_disposedValue)
@@ -346,19 +210,15 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             SaveConfig(Configuration);
 
-            _useActionHook?.Disable();
-            _useActionHook?.Dispose();
-
-            DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
-            DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
+            _services.DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
+            _services.DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
 
             TextureHelper.Dispose();
 
-            _ = CommandManager.RemoveHandler(COMMAND_TEXT);
-            _ = CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);
+            _ = _services.CommandManager.RemoveHandler(COMMAND_TEXT);
+            _ = _services.CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);
+            _actionHandler.Dispose();
 
-            CastBarHelper.Plugin = null;
-            _castBarHelper.Dispose();
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
             _disposedValue = true;

@@ -43,7 +43,8 @@ internal sealed class BaseCommand : SubCommandBase
                 .AppendLine("  -> executes the selected mode. Available modes are: ")
                 .Append("  -> ")
                 .AppendLine(string.Join(", ", modes))
-                .Append("  -> if the help parameter is present, displays additional information about the selected mode instead");
+                .AppendLine("  -> if the help parameter is present, displays additional information about the selected mode instead")
+                .Append(CultureInfo.InvariantCulture, $"  -> e.g. {FullCommand} {modes[0]} help");
         }
 
         return sb.ToString();

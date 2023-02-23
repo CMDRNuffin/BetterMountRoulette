@@ -1,26 +1,34 @@
 ﻿namespace BetterMountRoulette.UI;
 
 using BetterMountRoulette.Config;
+using BetterMountRoulette.Config.Data;
+using BetterMountRoulette.Util;
 
 using ImGuiNET;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
-using System.Text;
 
 internal sealed class ConfigWindow : IWindow
 {
     private bool _isOpen;
     private readonly BetterMountRoulettePlugin _plugin;
+    private readonly Services _services;
     private string? _currentMountGroup;
-    private ulong? _currentCharacter;
+    private readonly MountRenderer _mountRenderer;
+    private readonly CharacterManagementRenderer _charManagementRenderer;
 
-    public ConfigWindow(BetterMountRoulettePlugin plugin)
+    public ConfigWindow(BetterMountRoulettePlugin plugin, Services services)
     {
         _plugin = plugin;
+        _services = services;
+        _mountRenderer = new MountRenderer(_services);
+        _charManagementRenderer = new CharacterManagementRenderer(
+            services,
+            _plugin.WindowManager,
+            _plugin.CharacterManager,
+            _plugin.Configuration);
     }
 
     public override int GetHashCode()
@@ -36,14 +44,14 @@ internal sealed class ConfigWindow : IWindow
     public void Open()
     {
         _isOpen = true;
-        Mounts.RefreshUnlocked();
+        _plugin.MountRegistry.RefreshUnlocked();
     }
 
     public void Draw()
     {
         if (ImGui.Begin("Better Mount Roulette", ref _isOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
-            if (!BetterMountRoulettePlugin.ClientState.IsLoggedIn)
+            if (_plugin.CharacterConfig is not CharacterConfig characterConfig)
             {
                 ImGui.Text("Please log in first");
             }
@@ -51,15 +59,15 @@ internal sealed class ConfigWindow : IWindow
             {
                 if (ImGui.BeginTabItem("General"))
                 {
-                    string? mountRouletteGroupName = _plugin.Configuration.MountRouletteGroup;
-                    string? flyingRouletteGroupName = _plugin.Configuration.FlyingMountRouletteGroup;
+                    string? mountRouletteGroupName = characterConfig.MountRouletteGroup;
+                    string? flyingRouletteGroupName = characterConfig.FlyingMountRouletteGroup;
 
-                    SelectRouletteGroup(ref mountRouletteGroupName);
-                    SelectRouletteGroup(ref flyingRouletteGroupName, isFlying: true);
+                    SelectRouletteGroup(characterConfig, ref mountRouletteGroupName);
+                    SelectRouletteGroup(characterConfig, ref flyingRouletteGroupName, isFlying: true);
                     ImGui.Text("For one of these to take effect, the selected group has to enable at least one mount.");
 
-                    _plugin.Configuration.MountRouletteGroup = mountRouletteGroupName;
-                    _plugin.Configuration.FlyingMountRouletteGroup = flyingRouletteGroupName;
+                    characterConfig.MountRouletteGroup = mountRouletteGroupName;
+                    characterConfig.FlyingMountRouletteGroup = flyingRouletteGroupName;
 
                     // backwards compatibility
                     _plugin.Configuration.Enabled = (mountRouletteGroupName ?? flyingRouletteGroupName) is not null;
@@ -68,14 +76,14 @@ internal sealed class ConfigWindow : IWindow
 
                 if (ImGui.BeginTabItem("Mount groups"))
                 {
-                    MountGroup mounts = SelectCurrentGroup();
+                    MountGroup mounts = SelectCurrentGroup(characterConfig);
                     DrawMountGroup(mounts);
                     ImGui.EndTabItem();
                 }
 
                 if (ImGui.BeginTabItem("Character Management"))
                 {
-                    DrawCharacterManagement();
+                    _charManagementRenderer.Draw();
                     ImGui.EndTabItem();
                 }
 
@@ -87,101 +95,22 @@ internal sealed class ConfigWindow : IWindow
 
         if (!_isOpen)
         {
-            BetterMountRoulettePlugin.SaveConfig(_plugin.Configuration);
+            _plugin.CharacterManager.SaveCurrentCharacterConfig();
+            _plugin.SaveConfig(_plugin.Configuration);
             _plugin.WindowManager.Close(this);
         }
     }
 
-    private void DrawCharacterManagement()
+    private MountGroup SelectCurrentGroup(CharacterConfig characterConfig)
     {
-        if (!ImGui.BeginListBox("Characters"))
+        if(_currentMountGroup is not null && characterConfig.Groups.All(x => x.Name != _currentMountGroup))
         {
-            return;
+            _currentMountGroup = null;
         }
 
-        string selectedCharacterName = "NO CHARACTER SELECTED";
-        foreach (CharacterConfig? character in _plugin.Configuration.CharacterConfigs.OrderBy(x => x.CharacterID))
-        {
-            StringBuilder sb = new(character.CharacterName);
-            if (!string.IsNullOrWhiteSpace(character.CharacterWorld))
-            {
-                _ = sb.Append(CultureInfo.CurrentCulture, $" ({character.CharacterWorld})");
-            }
+        _currentMountGroup ??= characterConfig.Groups.First().Name;
 
-            string text = sb.ToString();
-
-            if (ImGui.Selectable(text, _currentCharacter == character.CharacterID))
-            {
-                Toggle(ref _currentCharacter, character.CharacterID);
-            }
-
-            if (_currentCharacter == character.CharacterID)
-            {
-                selectedCharacterName = text;
-            }
-        }
-
-        ImGui.EndListBox();
-        ImGui.BeginDisabled(_currentCharacter is null || _currentCharacter == BetterMountRoulettePlugin.ClientState.LocalContentId);
-
-        if (ImGui.Button("Import"))
-        {
-            Debug.Assert(_currentCharacter is not null);
-            ulong currentCharacter = _currentCharacter.Value;
-            _plugin.WindowManager.Confirm(
-                "Import settings?",
-                $"Import settings from {selectedCharacterName}? This will overwrite all settings for this character!",
-                ("Confirm", () => ImportFromCharacter(currentCharacter)),
-                "Cancel");
-        }
-
-        if (ImGui.Button("Delete"))
-        {
-            Debug.Assert(_currentCharacter is not null);
-            ulong currentCharacter = _currentCharacter.Value;
-            _plugin.WindowManager.Confirm(
-                "Delete settings?",
-                $"Delete settings for {selectedCharacterName}? This action cannot be undone!",
-                ("Confirm", () => DeleteCharacter(currentCharacter)),
-                "Cancel");
-        }
-
-        ImGui.EndDisabled();
-    }
-
-    private void ImportFromCharacter(ulong characterID)
-    {
-        _plugin.WindowManager.Confirm("Import", $"Imported (not really - TODO {characterID})!", "OK");
-    }
-
-    private void DeleteCharacter(ulong characterID)
-    {
-        _plugin.WindowManager.Confirm("Deletion", $"Deleted (not really - TODO {characterID})!", "OK");
-    }
-
-    private static void Toggle<T>(ref T? field, T value) where T : struct
-    {
-        if (Equals(field, value))
-        {
-            field = null;
-        }
-        else
-        {
-            field = value;
-        }
-    }
-
-    private MountGroup SelectCurrentGroup()
-    {
-        string? currentGroup = _currentMountGroup;
-        _currentMountGroup ??= _plugin.Configuration.DefaultGroupName;
-
-        SelectMountGroup(ref _currentMountGroup, "##currentgroup", 150);
-
-        if (_currentMountGroup != currentGroup)
-        {
-            Mounts.GetInstance(_currentMountGroup)!.Filter(false, null, null);
-        }
+        SelectMountGroup(characterConfig, ref _currentMountGroup, "##currentgroup", 150);
 
         int mode = 0;
         const int MODE_ADD = 1;
@@ -193,18 +122,19 @@ internal sealed class ConfigWindow : IWindow
         ImGui.SameLine();
         mode = ImGui.Button("Edit") ? MODE_EDIT : mode;
         ImGui.SameLine();
-        ImGui.BeginDisabled(!_plugin.Configuration.Groups.Any());
+        ImGui.BeginDisabled(!characterConfig.HasNonDefaultGroups);
         mode = ImGui.Button("Delete") ? MODE_DELETE : mode;
         ImGui.EndDisabled();
 
-        currentGroup = _currentMountGroup;
+        string currentGroup = _currentMountGroup;
         switch (mode)
         {
             case MODE_ADD:
-                var dialog = new RenameItemDialog(_plugin.WindowManager, "Add a new group", "", AddGroup)
+                var dialog = new RenameItemDialog(_plugin.WindowManager, "Add a new group", "", x => AddGroup(characterConfig, x))
                 {
                     NormalizeWhitespace = true
                 };
+
                 dialog.SetValidation(x => ValidateGroup(x, isNew: true), x => "A group with that name already exists.");
                 _plugin.WindowManager.OpenDialog(dialog);
                 break;
@@ -217,6 +147,7 @@ internal sealed class ConfigWindow : IWindow
                 {
                     NormalizeWhitespace = true
                 };
+
                 dialog.SetValidation(x => ValidateGroup(x, isNew: false), x => "Another group with that name already exists.");
 
                 _plugin.WindowManager.OpenDialog(dialog);
@@ -230,21 +161,16 @@ internal sealed class ConfigWindow : IWindow
                 break;
         }
 
-        if (_currentMountGroup == _plugin.Configuration.DefaultGroupName)
-        {
-            return new DefaultMountGroup(_plugin.Configuration);
-        }
-        else
-        {
-            return _plugin.Configuration.Groups.First(x => x.Name == _currentMountGroup);
-        }
+        return characterConfig.GetMountGroup(_currentMountGroup)!;
 
         bool ValidateGroup(string newName, bool isNew)
         {
-            HashSet<string> names = new(_plugin.Configuration.Groups.Select(x => x.Name), StringComparer.InvariantCultureIgnoreCase)
+            if (_plugin.CharacterConfig is not { } characterConfig)
             {
-                _plugin.Configuration.DefaultGroupName
-            };
+                return false;
+            }
+
+            HashSet<string> names = new(characterConfig.Groups.Select(x => x.Name), StringComparer.InvariantCultureIgnoreCase);
 
             if (!isNew)
             {
@@ -257,40 +183,13 @@ internal sealed class ConfigWindow : IWindow
 
     private void DeleteMountGroup(string name)
     {
-        if (name == _plugin.Configuration.DefaultGroupName)
+        if (_plugin.CharacterConfig is not { } characterConfig)
         {
-            MountGroup? group = _plugin.Configuration.Groups.FirstOrDefault();
-            if (group is null)
-            {
-                // can't delete the last group
-                return;
-            }
-
-            _plugin.Configuration.DefaultGroupName = group.Name;
-            _plugin.Configuration.EnabledMounts = group.EnabledMounts;
-            _plugin.Configuration.IncludeNewMounts = group.IncludeNewMounts;
+            return;
         }
 
-        if (_plugin.Configuration.MountRouletteGroup == name)
-        {
-            _plugin.Configuration.MountRouletteGroup = _plugin.Configuration.DefaultGroupName;
-        }
+        MountGroupManager.Delete(characterConfig, name);
 
-        if (_plugin.Configuration.FlyingMountRouletteGroup == name)
-        {
-            _plugin.Configuration.FlyingMountRouletteGroup = _plugin.Configuration.DefaultGroupName;
-        }
-
-        for (int i = 0; i < _plugin.Configuration.Groups.Count; ++i)
-        {
-            if (name == _plugin.Configuration.Groups[i].Name)
-            {
-                _plugin.Configuration.Groups.RemoveAt(i);
-                break;
-            }
-        }
-
-        Mounts.Remove(name);
         if (_currentMountGroup == name)
         {
             _currentMountGroup = null;
@@ -299,43 +198,23 @@ internal sealed class ConfigWindow : IWindow
 
     private void RenameMountGroup(string currentMountGroup, string newName)
     {
-        Configuration config = _plugin.Configuration;
-        if (config.MountRouletteGroup == currentMountGroup)
+        if (_plugin.CharacterConfig is not { } characterConfig)
         {
-            config.MountRouletteGroup = newName;
+            return;
         }
 
-        if (config.FlyingMountRouletteGroup == currentMountGroup)
-        {
-            config.FlyingMountRouletteGroup = newName;
-        }
+        MountGroupManager.Rename(characterConfig, currentMountGroup, newName);
 
-        if (config.DefaultGroupName == currentMountGroup)
-        {
-            config.DefaultGroupName = newName;
-        }
-        else
-        {
-            MountGroup group = config.Groups.First(x => x.Name == currentMountGroup);
-            group.Name = newName;
-        }
-
-        Mounts.Remove(currentMountGroup);
         if (_currentMountGroup == currentMountGroup)
         {
             _currentMountGroup = newName;
-            Mounts.GetInstance(newName)!.Filter(false, null, null);
         }
     }
 
-    private void AddGroup(string name)
+    private void AddGroup(CharacterConfig characterConfig, string name)
     {
-        Configuration config = _plugin.Configuration;
-        config.Groups.Add(new MountGroup { Name = name });
+        characterConfig.Groups.Add(new MountGroup { Name = name });
         _currentMountGroup = name;
-        Mounts inst = Mounts.GetInstance(name)!;
-        inst.Filter(false, null, null);
-        inst.Update(true);
     }
 
     private void DrawMountGroup(MountGroup group)
@@ -346,24 +225,22 @@ internal sealed class ConfigWindow : IWindow
             return;
         }
 
-        Mounts? mounts = Mounts.GetInstance(group.Name)!;
-
-        if (mounts is null)
-        {
-            ImGui.Text($"Unable to load mounts for group {group.Name}!");
-            return;
-        }
-
-        bool enableNewMounts = group.IncludeNewMounts;
+        bool enableNewMounts = !group.IncludedMeansActive;
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
 
-        if (enableNewMounts != group.IncludeNewMounts)
+        List<MountData> unlockedMounts = _plugin.MountRegistry.GetUnlockedMounts();
+        if (enableNewMounts == group.IncludedMeansActive)
         {
-            group.IncludeNewMounts = enableNewMounts;
-            mounts.UpdateUnlocked(enableNewMounts);
+            group.IncludedMeansActive = enableNewMounts;
+
+            // select all currently unselected mounts
+            var unlockedMountIDs = unlockedMounts.Select(x => x.ID).ToHashSet();
+            unlockedMountIDs.ExceptWith(group.IncludedMounts);
+            group.IncludedMounts.Clear();
+            group.IncludedMounts.UnionWith(unlockedMountIDs);
         }
 
-        int pages = mounts.PageCount;
+        int pages = MountRenderer.GetPageCount(_plugin.MountRegistry.UnlockedMountCount);
         if (pages == 0)
         {
             ImGui.Text("Please unlock at least one mount.");
@@ -372,10 +249,9 @@ internal sealed class ConfigWindow : IWindow
         {
             for (int page = 1; page <= pages; page++)
             {
-                if (ImGui.BeginTabItem($"{page}##mount_tab_{page}"))
+                if (ImGui.BeginTabItem($"{page}"))
                 {
-                    mounts.RenderItems(page);
-                    mounts.Save(group);
+                    _mountRenderer.RenderPage(unlockedMounts, group.IncludedMounts, group.IncludedMeansActive, page);
 
                     int currentPage = page;
                     (bool Select, int? Page)? maybeInfo =
@@ -397,14 +273,21 @@ internal sealed class ConfigWindow : IWindow
                             (null, false) => "currently selected mounts",
                             _ => "mounts on the current page",
                         };
+#pragma warning disable IDE0053 // Use expression body for lambda expressions
+                        // commented-out code needs to be preserved (for now)
                         _plugin.WindowManager.ConfirmYesNo(
                             "Are you sure?",
                             $"Do you really want to {selectText}select all {pageInfo}?",
                             () =>
                             {
-                                mounts.Update(info.Select, info.Page);
-                                mounts.Save(group);
+                                List<MountData> unlockedMounts = _plugin.MountRegistry.GetUnlockedMounts();
+                                MountRenderer.Update(
+                                    unlockedMounts,
+                                    group.IncludedMounts,
+                                    info.Select == group.IncludedMeansActive,
+                                    info.Page);
                             });
+#pragma warning restore IDE0053 // Use expression body for lambda expressions
                     }
 
                     ImGui.EndTabItem();
@@ -417,23 +300,26 @@ internal sealed class ConfigWindow : IWindow
         }
     }
 
-    private void SelectRouletteGroup(ref string? groupName, bool isFlying = false)
+    private static void SelectRouletteGroup(CharacterConfig characterConfig, ref string? groupName, bool isFlying = false)
     {
         bool isEnabled = groupName is not null;
         _ = ImGui.Checkbox($"Enable for {(isFlying ? "Flying " : "")} Mount Roulette", ref isEnabled);
         if (isFlying && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
             ImGui.SetTooltip(
-                "Legacy action from when some mounts couldn't fly. " +
-                "Not currently available in game without the help of external tools or via macro.");
+                "Legacy action from when some mounts couldn't fly. "
+                + "Currently available in game only via macro.");
         }
 
         if (isEnabled)
         {
-            groupName ??= _plugin.Configuration.DefaultGroupName;
+            groupName ??= characterConfig.Groups.FirstOrDefault()?.Name;
 
-            ImGui.SameLine();
-            SelectMountGroup(ref groupName, $"##roulettegroup_{(isFlying ? "f" : "g")}", 100);
+            if (groupName is not null)
+            {
+                ImGui.SameLine();
+                SelectMountGroup(characterConfig, ref groupName, $"##roulettegroup_{(isFlying ? "f" : "g")}", 100);
+            }
         }
         else
         {
@@ -441,7 +327,7 @@ internal sealed class ConfigWindow : IWindow
         }
     }
 
-    private void SelectMountGroup(ref string groupName, string label, float? width = null)
+    private static void SelectMountGroup(CharacterConfig characterConfig, ref string groupName, string label, float? width = null)
     {
         if (width is float w)
         {
@@ -450,12 +336,7 @@ internal sealed class ConfigWindow : IWindow
 
         if (ImGui.BeginCombo(label, groupName))
         {
-            if (ImGui.Selectable(_plugin.Configuration.DefaultGroupName, groupName == _plugin.Configuration.DefaultGroupName))
-            {
-                groupName = _plugin.Configuration.DefaultGroupName;
-            }
-
-            foreach (MountGroup group in _plugin.Configuration.Groups)
+            foreach (MountGroup group in characterConfig.Groups)
             {
                 if (ImGui.Selectable(group.Name, group.Name == groupName))
                 {
