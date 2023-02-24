@@ -88,6 +88,7 @@ internal sealed class MountRegistry
                    IconID = mount.Icon,
                    ID = mount.RowId,
                    Unlocked = GameFunctions.HasMountUnlocked(mount.RowId),
+                   ExtraSeats = mount.ExtraSeats,
                };
     }
 
@@ -120,5 +121,28 @@ internal sealed class MountRegistry
 
         int index = Random.Shared.Next(available.Count);
         return available[index].ID;
+    }
+
+    [SuppressMessage("Security", "CA5394:Do not use insecure randomness", Justification = "Non-critical use of randomness, so we prefer speed over security")]
+    public uint GetRandomWithExtraSeats(Pointer<ActionManager> actionManager, MountGroup group, int extraSeats = 1)
+    {
+        List<MountData> available = GetAvailableMounts(actionManager, group);
+        var withExtraSeats = available.Where(x => x.ExtraSeats >= extraSeats).ToList();
+
+        if (withExtraSeats.Count > 0)
+        {
+            int index = Random.Shared.Next(withExtraSeats.Count);
+            return withExtraSeats[index].ID;
+        }
+        else if (available.Count is 0)
+        {
+            return 0;
+        }
+        else
+        {
+            // Fall back to regular mounts if none have extra seats.
+            int index = Random.Shared.Next(available.Count);
+            return available[index].ID;
+        }
     }
 }

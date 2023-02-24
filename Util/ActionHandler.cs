@@ -6,6 +6,7 @@ using BetterMountRoulette.UI;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Hooking;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 
 using System;
 
@@ -67,10 +68,21 @@ internal sealed class ActionHandler : IDisposable
         {
             MountGroup? mountGroup = CharacterConfig.GetMountGroup(groupName);
 
+            int partySize = GroupManager.Instance()->MemberCount;
+
             uint newActionID = 0;
             if (mountGroup is not null)
             {
-                newActionID = _mountRegistry.GetRandom(ActionManager.Instance(), mountGroup);
+                if (mountGroup.ForceMultiseatersInParty && partySize > 1)
+                {
+                    // In future versions we could ask the player if they want to only use mounts that can seat all party members.
+                    // In the meantime, we look for any mounts with at least 1 extra seat.
+                    newActionID = _mountRegistry.GetRandomWithExtraSeats(ActionManager.Instance(), mountGroup, 1);
+                }
+                else
+                {
+                    newActionID = _mountRegistry.GetRandom(ActionManager.Instance(), mountGroup);
+                }
             }
 
             if (newActionID is not 0)

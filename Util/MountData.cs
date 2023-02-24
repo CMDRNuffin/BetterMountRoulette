@@ -18,6 +18,8 @@ internal sealed class MountData
 
     public bool Unlocked { get; set; }
 
+    public int ExtraSeats { get; set; }
+
     public MountData(TextureHelper textureHelper, SeString name)
     {
         _textureHelper = textureHelper;
