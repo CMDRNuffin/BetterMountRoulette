@@ -231,9 +231,10 @@ internal sealed class ConfigWindow : IWindow
         List<MountData> unlockedMounts = _plugin.MountRegistry.GetUnlockedMounts();
         if (enableNewMounts == group.IncludedMeansActive)
         {
-            group.IncludedMeansActive = enableNewMounts;
+            // we auto-enable new mounts by tracking which mounts are explicitly disabled
+            group.IncludedMeansActive = !enableNewMounts;
 
-            // select all currently unselected mounts
+            // invert selection
             var unlockedMountIDs = unlockedMounts.Select(x => x.ID).ToHashSet();
             unlockedMountIDs.ExceptWith(group.IncludedMounts);
             group.IncludedMounts.Clear();
