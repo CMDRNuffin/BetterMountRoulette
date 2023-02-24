@@ -227,6 +227,12 @@ internal sealed class ConfigWindow : IWindow
 
         bool enableNewMounts = !group.IncludedMeansActive;
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
+        
+        bool forceMultiseatersInParty = group.ForceMultiseatersInParty;
+        if (ImGui.Checkbox("Use only multiseater mounts in parties", ref forceMultiseatersInParty))
+        {
+            group.ForceMultiseatersInParty = forceMultiseatersInParty;
+        }
 
         List<MountData> unlockedMounts = _plugin.MountRegistry.GetUnlockedMounts();
         if (enableNewMounts == group.IncludedMeansActive)
@@ -278,7 +284,7 @@ internal sealed class ConfigWindow : IWindow
                         // commented-out code needs to be preserved (for now)
                         _plugin.WindowManager.ConfirmYesNo(
                             "Are you sure?",
-                            $"Do you really want to {selectText}select all {pageInfo}?",
+                            $"Do you really want to {selectText} all {pageInfo}?",
                             () =>
                             {
                                 List<MountData> unlockedMounts = _plugin.MountRegistry.GetUnlockedMounts();

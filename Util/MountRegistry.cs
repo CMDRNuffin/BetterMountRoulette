@@ -3,6 +3,7 @@
 using BetterMountRoulette.Config.Data;
 
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.Interop;
 
 using Lumina.Excel.GeneratedSheets;
@@ -88,6 +89,7 @@ internal sealed class MountRegistry
                    IconID = mount.Icon,
                    ID = mount.RowId,
                    Unlocked = GameFunctions.HasMountUnlocked(mount.RowId),
+                   ExtraSeats = mount.ExtraSeats,
                };
     }
 
@@ -113,6 +115,23 @@ internal sealed class MountRegistry
     public uint GetRandom(Pointer<ActionManager> actionManager, MountGroup group)
     {
         List<MountData> available = GetAvailableMounts(actionManager, group);
+
+        int partySize = 0;
+        unsafe
+        {
+            partySize = GroupManager.Instance()->MemberCount;
+        }
+
+        if (group.ForceMultiseatersInParty && partySize > 1)
+        {
+            int extraSeats = 1;
+            var withExtraSeats = available.Where(x => x.ExtraSeats >= extraSeats).ToList();
+            if (withExtraSeats.Count > 0)
+            {
+                return withExtraSeats[Random.Shared.Next(withExtraSeats.Count)].ID;
+            }
+        }
+
         if (available.Count is 0)
         {
             return 0;

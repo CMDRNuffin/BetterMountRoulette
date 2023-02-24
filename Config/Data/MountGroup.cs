@@ -13,4 +13,7 @@ internal sealed class MountGroup
 
     [JsonProperty(PropertyName = "IncludeNewMounts")]
     public bool IncludedMeansActive { get; set; }
+
+    [JsonProperty(PropertyName = "ForceMultiseatersInParty")]
+    public bool ForceMultiseatersInParty { get; set; } = false;
 }
