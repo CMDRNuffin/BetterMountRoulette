@@ -3,6 +3,7 @@
 using BetterMountRoulette.Config.Data;
 
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.Interop;
 
 using Lumina.Excel.GeneratedSheets;
@@ -114,6 +115,23 @@ internal sealed class MountRegistry
     public uint GetRandom(Pointer<ActionManager> actionManager, MountGroup group)
     {
         List<MountData> available = GetAvailableMounts(actionManager, group);
+
+        int partySize = 0;
+        unsafe
+        {
+            partySize = GroupManager.Instance()->MemberCount;
+        }
+
+        if (group.ForceMultiseatersInParty && partySize > 1)
+        {
+            int extraSeats = 1;
+            var withExtraSeats = available.Where(x => x.ExtraSeats >= extraSeats).ToList();
+            if (withExtraSeats.Count > 0)
+            {
+                return withExtraSeats[Random.Shared.Next(withExtraSeats.Count)].ID;
+            }
+        }
+
         if (available.Count is 0)
         {
             return 0;
@@ -121,28 +139,5 @@ internal sealed class MountRegistry
 
         int index = Random.Shared.Next(available.Count);
         return available[index].ID;
-    }
-
-    [SuppressMessage("Security", "CA5394:Do not use insecure randomness", Justification = "Non-critical use of randomness, so we prefer speed over security")]
-    public uint GetRandomWithExtraSeats(Pointer<ActionManager> actionManager, MountGroup group, int extraSeats = 1)
-    {
-        List<MountData> available = GetAvailableMounts(actionManager, group);
-        var withExtraSeats = available.Where(x => x.ExtraSeats >= extraSeats).ToList();
-
-        if (withExtraSeats.Count > 0)
-        {
-            int index = Random.Shared.Next(withExtraSeats.Count);
-            return withExtraSeats[index].ID;
-        }
-        else if (available.Count is 0)
-        {
-            return 0;
-        }
-        else
-        {
-            // Fall back to regular mounts if none have extra seats.
-            int index = Random.Shared.Next(available.Count);
-            return available[index].ID;
-        }
     }
 }
