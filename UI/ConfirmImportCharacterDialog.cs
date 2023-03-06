@@ -21,7 +21,7 @@ internal sealed class ConfirmImportCharacterDialog : IWindow
     {
         bool? result = null;
         bool open = true /* keep open until a choice was made */;
-        if (ImGui.Begin("Import legacy data?", ref open, ImGuiWindowFlags.Modal))
+        if (ImGui.Begin("Better Mount Roulette", ref open, ImGuiWindowFlags.Modal))
         {
             ImGui.Text("You have no saved settings for this character.");
             ImGui.Text("Would you like to import legacy settings for this character?");
