@@ -11,7 +11,6 @@ using Dalamud.Plugin;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 
@@ -138,12 +137,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 CharacterConfig.IsNew = false;
             }
         }
-    }
-
-    [Conditional("DEBUG")]
-    internal void Log(string message)
-    {
-        WindowManager.DebugWindow.AddText(message);
     }
 
     internal void SaveConfig(Configuration configuration)

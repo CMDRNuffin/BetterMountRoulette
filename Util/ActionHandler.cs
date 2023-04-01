@@ -134,7 +134,6 @@ internal sealed class ActionHandler : IDisposable
         {
             _hideAction = (true, actionID: 9);
             _ = ActionManager.Instance()->UseAction(ActionType.Mount, mount);
-            _services.Chat.Print($"Mounting {mount}");
         }
         else
         {
