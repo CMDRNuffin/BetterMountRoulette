@@ -1,13 +1,11 @@
 ﻿namespace BetterMountRoulette.Util;
 
-using Dalamud.Data;
 using Dalamud.Game;
-using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 
 using Lumina;
 
@@ -18,16 +16,16 @@ internal sealed class Services
     internal readonly DalamudPluginInterface DalamudPluginInterface;
 
     [PluginService]
-    internal SigScanner SigScanner { get; private set; } = null!;
+    internal ISigScanner SigScanner { get; private set; } = null!;
 
     [PluginService]
-    internal CommandManager CommandManager { get; private set; } = null!;
+    internal ICommandManager CommandManager { get; private set; } = null!;
 
     [PluginService]
-    public GameGui GameGui { get; private set; } = null!;
+    public IGameGui GameGui { get; private set; } = null!;
 
     [PluginService]
-    public DataManager DataManager { get; private set; } = null!;
+    public IDataManager DataManager { get; private set; } = null!;
 
     internal GameData GameData => DataManager.GameData;
 
@@ -38,10 +36,13 @@ internal sealed class Services
     internal Condition Condition { get; private set; } = null!;
 
     [PluginService]
-    internal ClientState ClientState { get; private set; } = null!;
+    internal IClientState ClientState { get; private set; } = null!;
 
     [PluginService]
     internal Framework Framework { get; private set; } = null!;
+
+    [PluginService]
+    internal ITextureProvider TextureProvider { get; private set; } = null!;
 
     internal TextureHelper TextureHelper { get; }
 

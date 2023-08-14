@@ -31,9 +31,6 @@ internal sealed class Configuration : IPluginConfiguration
     public string DefaultGroupName { get; set; } = DEFAULT_GROUP_NAME;
 
     [JsonIgnore]
-    public int LoadedVersion { get; set; }
-
-    [JsonIgnore]
     public bool HasNonDefaultGroups => Groups.Count > 0;
 
     [Versions(introduced: 0, removed: 2)]

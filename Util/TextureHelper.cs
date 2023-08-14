@@ -1,6 +1,6 @@
 ﻿namespace BetterMountRoulette.Util;
 
-using Dalamud.Data;
+using Dalamud.Plugin.Services;
 using ImGuiScene;
 
 using System;
@@ -12,7 +12,7 @@ internal sealed class TextureHelper
     private readonly Dictionary<string, TextureWrap> _loadedTextures = new();
     private readonly Dictionary<uint, TextureWrap> _loadedIconTextures = new();
     private readonly Services _services;
-    private DataManager DataManager => _services.DataManager;
+    private ITextureProvider TextureProvider => _services.TextureProvider;
 
     public TextureHelper(Services services)
     {
@@ -22,12 +22,12 @@ internal sealed class TextureHelper
     public nint LoadUldTexture(string name)
     {
         string path = $"ui/uld/{name}_hr1.tex";
-        return LoadTexture(_loadedTextures, path, DataManager.GetImGuiTexture);
+        return LoadTexture(_loadedTextures, path, x => TextureProvider.GetTextureFromGame(x, keepAlive: true));
     }
 
     public nint LoadIconTexture(uint id)
     {
-        return LoadTexture(_loadedIconTextures, id, DataManager.GetImGuiTextureIcon);
+        return LoadTexture(_loadedIconTextures, id, x => TextureProvider.GetIcon(x, keepAlive: true));
     }
 
     public void Dispose()

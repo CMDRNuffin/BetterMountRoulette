@@ -8,7 +8,6 @@ internal static class ConfigVersionManager
 {
     public static void DoMigration(Configuration config)
     {
-        config.LoadedVersion = config.Version;
         if (config.Version <= 1)
         {
             config.Version = 2;
