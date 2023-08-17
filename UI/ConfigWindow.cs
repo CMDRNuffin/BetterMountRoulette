@@ -53,18 +53,7 @@ internal sealed class ConfigWindow : IWindow
             {
                 if (ImGui.BeginTabItem("General"))
                 {
-                    string? mountRouletteGroupName = characterConfig.MountRouletteGroup;
-                    string? flyingRouletteGroupName = characterConfig.FlyingMountRouletteGroup;
-
-                    SelectRouletteGroup(characterConfig, ref mountRouletteGroupName);
-                    SelectRouletteGroup(characterConfig, ref flyingRouletteGroupName, isFlying: true);
-                    ImGui.Text("For one of these to take effect, the selected group has to enable at least one mount.");
-
-                    characterConfig.MountRouletteGroup = mountRouletteGroupName;
-                    characterConfig.FlyingMountRouletteGroup = flyingRouletteGroupName;
-
-                    // backwards compatibility
-                    _plugin.Configuration.Enabled = (mountRouletteGroupName ?? flyingRouletteGroupName) is not null;
+                    GeneralConfigTab(characterConfig);
                     ImGui.EndTabItem();
                 }
 
@@ -92,6 +81,22 @@ internal sealed class ConfigWindow : IWindow
             _plugin.SaveConfig(_plugin.Configuration);
             _plugin.WindowManager.Close(this);
         }
+    }
+
+    private void GeneralConfigTab(CharacterConfig characterConfig)
+    {
+        string? mountRouletteGroupName = characterConfig.MountRouletteGroup;
+        string? flyingRouletteGroupName = characterConfig.FlyingMountRouletteGroup;
+
+        SelectRouletteGroup(characterConfig, ref mountRouletteGroupName);
+        SelectRouletteGroup(characterConfig, ref flyingRouletteGroupName, isFlying: true);
+        ImGui.Text("For one of these to take effect, the selected group has to enable at least one mount.");
+
+        characterConfig.MountRouletteGroup = mountRouletteGroupName;
+        characterConfig.FlyingMountRouletteGroup = flyingRouletteGroupName;
+
+        // backwards compatibility
+        _plugin.Configuration.Enabled = (mountRouletteGroupName ?? flyingRouletteGroupName) is not null;
     }
 
     private static void SelectRouletteGroup(CharacterConfig characterConfig, ref string? groupName, bool isFlying = false)
