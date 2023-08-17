@@ -103,9 +103,9 @@ internal sealed class ConfigWindow : IWindow
     {
         bool isEnabled = groupName is not null;
         _ = ImGui.Checkbox($"Enable for {(isFlying ? "Flying " : "")} Mount Roulette", ref isEnabled);
-        if (isFlying && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+        if (isFlying)
         {
-            ImGui.SetTooltip(
+            ControlHelper.Tooltip(
                 "Legacy action from when some mounts couldn't fly. "
                 + "Currently available in game only via macro.");
         }
