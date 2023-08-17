@@ -17,4 +17,7 @@ internal sealed class MountGroup
 
     [JsonProperty("ForceMultiseatersInParty")]
     public bool ForceMultiseatersInParty { get; set; } = false;
+
+    [JsonProperty("PreferMoreSeats")]
+    public bool PreferMoreSeats { get; set; } = false;
 }

@@ -108,6 +108,23 @@ internal sealed class MountGroupPage
         }
 
         ControlHelper.Tooltip("Has no effect on cross-world parties, since those don't allow riding pillion.");
+
+        ImGui.Indent();
+        ImGui.BeginDisabled(!group.ForceMultiseatersInParty);
+        bool preferMoreSeats = group.PreferMoreSeats;
+        if (ImGui.Checkbox("Prefer mounts that can accomodate more party members", ref preferMoreSeats))
+        {
+            group.PreferMoreSeats = preferMoreSeats;
+        }
+
+        ControlHelper.Tooltip(
+            "Requires the random mount to accomodate the largest number of current party members possible.",
+            "E.g. if your party size is 4, only mounts with 4 or more seats are considered. However, if",
+            "you don't have a 4-seater (or more), only mounts with the largest number of seats available",
+            "to you is considered.");
+
+        ImGui.EndDisabled();
+        ImGui.Unindent();
     }
 
     private static void UpdateMountSelectionData(MountGroup group, List<MountData> unlockedMounts, bool enableNewMounts)
