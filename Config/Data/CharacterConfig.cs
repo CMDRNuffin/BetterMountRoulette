@@ -11,6 +11,7 @@ internal sealed class CharacterConfig
 {
     [JsonIgnore]
     public bool IsNew { get; set; }
+
     public bool IncludeNewMounts { get; set; } = true;
 
     public List<MountGroup> Groups { get; set; } = new();

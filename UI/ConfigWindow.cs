@@ -5,6 +5,7 @@ using BetterMountRoulette.Util;
 
 using ImGuiNET;
 
+using System;
 using System.Linq;
 
 internal sealed class ConfigWindow : IWindow
@@ -51,25 +52,21 @@ internal sealed class ConfigWindow : IWindow
             }
             else if (ImGui.BeginTabBar("settings"))
             {
-                if (ImGui.BeginTabItem("General"))
-                {
-                    GeneralConfigTab(characterConfig);
-                    ImGui.EndTabItem();
-                }
-
-                if (ImGui.BeginTabItem("Mount Groups"))
-                {
-                    _mountGroupPage.RenderPage(characterConfig);
-                    ImGui.EndTabItem();
-                }
-
-                if (ImGui.BeginTabItem("Character Management"))
-                {
-                    _charManagementRenderer.Draw();
-                    ImGui.EndTabItem();
-                }
+                Tab("General", GeneralConfigTab);
+                Tab("Mount Groups", _mountGroupPage.RenderPage);
+                Tab("Character Management", x => _charManagementRenderer.Draw());
 
                 ImGui.EndTabBar();
+
+                // Helper method for reducing boilerplate
+                void Tab(string name, Action<CharacterConfig> contentSelector)
+                {
+                    if (ImGui.BeginTabItem(name))
+                    {
+                        contentSelector(characterConfig);
+                        ImGui.EndTabItem();
+                    }
+                }
             }
         }
 
