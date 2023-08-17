@@ -6,14 +6,15 @@ using System.Collections.Generic;
 
 internal sealed class MountGroup
 {
+    [JsonProperty("Name")]
     public string Name { get; set; } = "";
 
-    [JsonProperty(PropertyName = "EnabledMounts")]
+    [JsonProperty("EnabledMounts")]
     public HashSet<uint> IncludedMounts { get; set; } = new();
 
-    [JsonProperty(PropertyName = "IncludeNewMounts")]
+    [JsonProperty("IncludeNewMounts")]
     public bool IncludedMeansActive { get; set; }
 
-    [JsonProperty(PropertyName = "ForceMultiseatersInParty")]
+    [JsonProperty("ForceMultiseatersInParty")]
     public bool ForceMultiseatersInParty { get; set; } = false;
 }
