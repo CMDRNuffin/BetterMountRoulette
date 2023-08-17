@@ -1,5 +1,6 @@
 ﻿namespace BetterMountRoulette.UI;
 
+using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
 using ImGuiNET;
@@ -23,7 +24,7 @@ internal sealed class MountRenderer
         _services = services;
     }
 
-    public void RenderPage(List<MountData> mounts, HashSet<uint> selectedMounts, bool selectedMeansActive, int page)
+    public void RenderPage(List<MountData> mounts, MountGroup group, int page)
     {
         int i = 0;
         foreach (MountData mount in mounts.Skip((page - 1) * PAGE_SIZE).Take(PAGE_SIZE))
@@ -38,20 +39,20 @@ internal sealed class MountRenderer
                 i = 0;
             }
 
-            bool enabled = selectedMounts.Contains(mount.ID) == selectedMeansActive;
+            bool enabled = group.IncludedMounts.Contains(mount.ID) == group.IncludedMeansActive;
             enabled = Render(mount, enabled);
-            if (enabled == selectedMeansActive)
+            if (enabled == group.IncludedMeansActive)
             {
-                _ = selectedMounts.Add(mount.ID);
+                _ = group.IncludedMounts.Add(mount.ID);
             }
             else
             {
-                _ = selectedMounts.Remove(mount.ID);
+                _ = group.IncludedMounts.Remove(mount.ID);
             }
         }
     }
 
-    public static void Update(List<MountData> mounts, HashSet<uint> selectedMounts, bool selected, int? page)
+    public static void Update(List<MountData> mounts, MountGroup group, bool selected, int? page)
     {
         IEnumerable<MountData> filteredMounts = mounts;
         if (page is not null)
@@ -59,10 +60,15 @@ internal sealed class MountRenderer
             filteredMounts = filteredMounts.Skip((page.Value - 1) * PAGE_SIZE).Take(PAGE_SIZE);
         }
 
-        Func<uint, bool> operation = selected ? selectedMounts.Add : selectedMounts.Remove;
+        HashSet<uint> selectedMounts = group.IncludedMounts;
+
+        Func<uint, bool> selectOperation = selected == group.IncludedMeansActive
+            ? selectedMounts.Add
+            : selectedMounts.Remove;
+
         foreach (MountData mount in filteredMounts)
         {
-            _ = operation(mount.ID);
+            _ = selectOperation(mount.ID);
         }
     }
 

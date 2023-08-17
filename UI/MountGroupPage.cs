@@ -62,7 +62,7 @@ internal sealed class MountGroupPage
 
     private void RenderMountListPage(int page, MountGroup group, List<MountData> unlockedMounts)
     {
-        _mountRenderer.RenderPage(unlockedMounts, group.IncludedMounts, group.IncludedMeansActive, page);
+        _mountRenderer.RenderPage(unlockedMounts, group, page);
 
         int currentPage = page;
         (bool Select, int? Page)? maybeInfo =
@@ -90,8 +90,8 @@ internal sealed class MountGroupPage
                 $"Do you really want to {selectText} all {pageInfo}?",
                 () => MountRenderer.Update(
                     _plugin.MountRegistry.GetUnlockedMounts(),
-                    group.IncludedMounts,
-                    info.Select == group.IncludedMeansActive,
+                    group,
+                    info.Select,
                     info.Page));
         }
     }
