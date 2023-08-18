@@ -131,14 +131,25 @@ internal sealed class MountRegistry
 
         if (group.ForceMultiseatersInParty && partySize > 1)
         {
+            // If the largest unlocked mount has more extra seats than other people in the party,
+            // only use mounts that can accomodate the entire party. Otherwise use only mounts with
+            // the largest available number of seats.
             int extraSeats = group.PreferMoreSeats
-                ? Math.Min(largestExtraSeatNumber, partySize - 1) /* accomodate the largest possible number of current party members */
+                ? Math.Min(largestExtraSeatNumber, partySize - 1)
                 : 1;
 
             var withExtraSeats = available.Where(x => x.ExtraSeats >= extraSeats).ToList();
             if (withExtraSeats.Count > 0)
             {
                 available = withExtraSeats;
+            }
+        }
+        else if (group.ForceSingleSeatersWhileSolo && partySize == 1)
+        {
+            var withNoExtraSeats = available.Where(x => x.ExtraSeats == 0).ToList();
+            if (withNoExtraSeats.Count > 0)
+            {
+                available = withNoExtraSeats;
             }
         }
 

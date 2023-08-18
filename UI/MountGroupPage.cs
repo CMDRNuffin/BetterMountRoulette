@@ -99,24 +99,19 @@ internal sealed class MountGroupPage
     private static void RenderGroupSettings(MountGroup group, out bool enableNewMounts)
     {
         enableNewMounts = !group.IncludedMeansActive;
+        bool forceMultiseatersInParty = group.ForceMultiseatersInParty;
+        bool preferMoreSeats = group.PreferMoreSeats;
+        bool forceSingleSeatersWhileSolo = group.ForceSingleSeatersWhileSolo;
+
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
 
-        bool forceMultiseatersInParty = group.ForceMultiseatersInParty;
-        if (ImGui.Checkbox("Use only multiseater mounts in parties", ref forceMultiseatersInParty))
-        {
-            group.ForceMultiseatersInParty = forceMultiseatersInParty;
-        }
-
+        _ = ImGui.Checkbox("Use only multi-seated mounts in parties", ref forceMultiseatersInParty);
         ControlHelper.Tooltip("Has no effect on cross-world parties, since those don't allow riding pillion.");
 
         ImGui.Indent();
-        ImGui.BeginDisabled(!group.ForceMultiseatersInParty);
-        bool preferMoreSeats = group.PreferMoreSeats;
-        if (ImGui.Checkbox("Prefer mounts that can accomodate more party members", ref preferMoreSeats))
-        {
-            group.PreferMoreSeats = preferMoreSeats;
-        }
+        ImGui.BeginDisabled(!forceMultiseatersInParty);
 
+        _ = ImGui.Checkbox("Prefer mounts that can accomodate more party members", ref preferMoreSeats);
         ControlHelper.Tooltip(
             "Requires the random mount to accomodate the largest number of current party members possible.",
             "E.g. if your party size is 4, only mounts with 4 or more seats are considered. However, if",
@@ -125,6 +120,13 @@ internal sealed class MountGroupPage
 
         ImGui.EndDisabled();
         ImGui.Unindent();
+
+        _ = ImGui.Checkbox("Use only single-seated mounts while solo", ref forceSingleSeatersWhileSolo);
+        ControlHelper.Tooltip("Also applies while in a cross-world party.");
+
+        group.ForceMultiseatersInParty = forceMultiseatersInParty;
+        group.PreferMoreSeats = preferMoreSeats;
+        group.ForceSingleSeatersWhileSolo = forceSingleSeatersWhileSolo;
     }
 
     private static void UpdateMountSelectionData(MountGroup group, List<MountData> unlockedMounts, bool enableNewMounts)

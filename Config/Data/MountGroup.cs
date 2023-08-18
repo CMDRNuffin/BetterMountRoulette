@@ -20,4 +20,7 @@ internal sealed class MountGroup
 
     [JsonProperty("PreferMoreSeats")]
     public bool PreferMoreSeats { get; set; } = false;
+
+    [JsonProperty("ForceSingleSeatersWhileSolo")]
+    public bool ForceSingleSeatersWhileSolo { get; set; } = false;
 }
