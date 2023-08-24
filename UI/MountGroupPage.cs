@@ -110,16 +110,11 @@ internal sealed class MountGroupPage
 
         ImGui.Indent();
         ImGui.BeginDisabled(!forceMultiseatersInParty);
-
         _ = ImGui.Checkbox("Prefer mounts that can accomodate more party members", ref preferMoreSeats);
-        ControlHelper.Tooltip(
-            "Requires the random mount to accomodate the largest number of current party members possible.",
-            "E.g. if your party size is 4, only mounts with 4 or more seats are considered. However, if",
-            "you don't have a 4-seater (or more), only mounts with the largest number of seats available",
-            "to you is considered.");
-
         ImGui.EndDisabled();
         ImGui.Unindent();
+
+        ControlHelper.Tooltip("Requires the random mount to accomodate the largest number of current party members possible.");
 
         _ = ImGui.Checkbox("Use only single-seated mounts while solo", ref forceSingleSeatersWhileSolo);
         ControlHelper.Tooltip("Also applies while in a cross-world party.");
