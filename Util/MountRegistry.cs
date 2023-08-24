@@ -144,7 +144,7 @@ internal sealed class MountRegistry
                 available = withExtraSeats;
             }
         }
-        else if (group.ForceSingleSeatersWhileSolo && partySize == 1)
+        else if (group.ForceSingleSeatersWhileSolo && partySize <= 1)
         {
             var withNoExtraSeats = available.Where(x => x.ExtraSeats == 0).ToList();
             if (withNoExtraSeats.Count > 0)
