@@ -48,6 +48,9 @@ internal sealed class Services
     [PluginService]
     internal IGameInteropProvider GameInteropProvider { get; private set; } = null!;
 
+    [PluginService]
+    internal IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+
     internal TextureHelper TextureHelper { get; }
 
     private event EventHandler? LoginInternal;

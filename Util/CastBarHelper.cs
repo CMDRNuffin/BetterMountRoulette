@@ -1,6 +1,7 @@
 ﻿namespace BetterMountRoulette.Util;
 
-using Dalamud.Hooking;
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
 
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -24,11 +25,6 @@ internal sealed class CastBarHelper : IDisposable
     private uint? _lastMountActionID;
     private bool _shouldUpdate;
 
-    private bool _initialized;
-
-    private unsafe delegate void CastBarOnUpdateDelegate(AddonCastBar* castbar, void* a2);
-
-    private Hook<CastBarOnUpdateDelegate>? _castBarOnUpdate;
     private bool? _show;
     private readonly Services _services;
 
@@ -52,20 +48,7 @@ internal sealed class CastBarHelper : IDisposable
 
     public unsafe void Enable()
     {
-        if (!_initialized)
-        {
-            _initialized = true;
-            _castBarOnUpdate = _services.GameInteropProvider.HookFromSignature<CastBarOnUpdateDelegate>(
-                "48 83 EC 38 48 8B 92",
-                CastBarOnUpdate);
-        }
-
-        if (_castBarOnUpdate is null)
-        {
-            return;
-        }
-
-        _castBarOnUpdate.Enable();
+        _services.AddonLifecycle.RegisterListener(AddonEvent.PostUpdate, "_CastBar", CastBarOnUpdate);
     }
 
     private static bool IsNullOr(uint? value, uint comparand)
@@ -73,23 +56,24 @@ internal sealed class CastBarHelper : IDisposable
         return value is null || value == comparand;
     }
 
-    private unsafe void CastBarOnUpdate(AddonCastBar* castBar, void* a2)
+    private unsafe void CastBarOnUpdate(AddonEvent type, AddonArgs args)
     {
-        _castBarOnUpdate?.Original(castBar, a2);
-        if (!_shouldUpdate || !_initialized)
+        if (!_shouldUpdate)
         {
             return;
         }
 
         _shouldUpdate = false;
 
-        if (Show is null || (Show is true && IsNullOr(_lastMountActionID, MountID)))
+        if (Show is null || (Show is true && _lastMountActionID != MountID))
         {
             _show = null;
             _lastMountActionID = null;
             _lastCastInfo = null;
             return;
         }
+
+        _lastMountActionID = MountID;
 
         if (Show is false && _regularMountRoulette is null)
         {
@@ -104,7 +88,7 @@ internal sealed class CastBarHelper : IDisposable
         // un-hiding mount doesn't work cleanly.
         // implicitly unhiding works best usually, but not at all if the same mount
         // is selected first by roulette and then again manually
-        UpdateCastBarInternal(castBar);
+        UpdateCastBarInternal((AddonCastBar*)args.Addon);
     }
 
     private unsafe void UpdateCastBarInternal(AddonCastBar* castBar)
@@ -142,6 +126,7 @@ internal sealed class CastBarHelper : IDisposable
             component->IconId = castInfo.IconID;
             component->IconImage->LoadIconTexture((int)component->IconId, 0);
             skillNameText->SetText(castInfo.Text);
+            _lastCastInfo = null;
         }
     }
 
@@ -180,7 +165,7 @@ internal sealed class CastBarHelper : IDisposable
 
     public void Dispose()
     {
-        _castBarOnUpdate?.Dispose();
+        _services.AddonLifecycle.UnregisterListener(CastBarOnUpdate);
         ResetCastBar();
     }
 }
