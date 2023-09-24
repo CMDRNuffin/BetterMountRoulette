@@ -2,7 +2,7 @@
 
 using BetterMountRoulette.Util;
 
-using Dalamud.Game.Gui;
+using Dalamud.Plugin.Services;
 
 using System;
 using System.Collections.Generic;
@@ -24,7 +24,7 @@ internal abstract class SubCommandBase : ISubCommand
 
     protected Dictionary<string, ISubCommand> SubCommands { get; } = new(StringComparer.InvariantCultureIgnoreCase);
 
-    protected ChatGui Chat => Services.Chat;
+    protected IChatGui Chat => Services.Chat;
 
     public void AddSubCommand(ISubCommand child)
     {

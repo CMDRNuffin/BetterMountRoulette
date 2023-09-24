@@ -33,7 +33,7 @@ internal sealed class ActionHandler : IDisposable
             return;
         }
 
-        _useActionHook = Hook<UseActionHandler>.FromAddress(renderAddress, OnUseAction);
+        _useActionHook = _services.GameInteropProvider.HookFromAddress<UseActionHandler>(renderAddress, OnUseAction);
         _useActionHook.Enable();
         _castBarHelper.Enable();
     }

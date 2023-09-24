@@ -16,7 +16,6 @@ internal sealed class MountRenderer
     private const int COLUMNS = 5;
     private const int ROWS = 6;
 
-    private static nint? _selectedUnselectedIcon;
     private readonly Services _services;
 
     public MountRenderer(Services services)
@@ -79,7 +78,7 @@ internal sealed class MountRenderer
 
     public bool Render(MountData mountData, bool enabled)
     {
-        _selectedUnselectedIcon ??= _services.TextureHelper.LoadUldTexture("readycheck");
+        nint selectedUnselectedIcon = _services.TextureHelper.LoadUldTexture("readycheck");
 
         nint mountIcon = mountData.GetIcon();
 
@@ -117,7 +116,7 @@ internal sealed class MountRenderer
 
         Vector2 offset = new(enabled ? 0.1f : 0.6f, 0.2f);
         Vector2 offset2 = new(enabled ? 0.4f : 0.9f, 0.8f);
-        ImGui.Image(_selectedUnselectedIcon!.Value, overlaySize, offset, offset2);
+        ImGui.Image(selectedUnselectedIcon, overlaySize, offset, offset2);
 
         // put cursor back to where it was after rendering the button to prevent
         // messing up the table rendering

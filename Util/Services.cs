@@ -1,8 +1,6 @@
 ﻿namespace BetterMountRoulette.Util;
 
 using Dalamud.Game;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.Gui;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -30,19 +28,25 @@ internal sealed class Services
     internal GameData GameData => DataManager.GameData;
 
     [PluginService]
-    internal ChatGui Chat { get; private set; } = null!;
+    internal IChatGui Chat { get; private set; } = null!;
 
     [PluginService]
-    internal Condition Condition { get; private set; } = null!;
+    internal ICondition Condition { get; private set; } = null!;
 
     [PluginService]
     internal IClientState ClientState { get; private set; } = null!;
 
     [PluginService]
-    internal Framework Framework { get; private set; } = null!;
+    internal IFramework Framework { get; private set; } = null!;
 
     [PluginService]
     internal ITextureProvider TextureProvider { get; private set; } = null!;
+
+    [PluginService]
+    internal IPluginLog PluginLog { get; private set; } = null!;
+
+    [PluginService]
+    internal IGameInteropProvider GameInteropProvider { get; private set; } = null!;
 
     internal TextureHelper TextureHelper { get; }
 
@@ -79,12 +83,12 @@ internal sealed class Services
         TextureHelper = new(this);
     }
 
-    private void OnLogin(object? sender, EventArgs e)
+    private void OnLogin()
     {
         Framework.Update += OnFrameworkUpdate;
     }
 
-    private void OnFrameworkUpdate(Framework framework)
+    private void OnFrameworkUpdate(IFramework framework)
     {
         if (ClientState.LocalPlayer is null)
         {

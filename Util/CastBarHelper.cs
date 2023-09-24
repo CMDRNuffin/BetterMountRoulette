@@ -55,12 +55,9 @@ internal sealed class CastBarHelper : IDisposable
         if (!_initialized)
         {
             _initialized = true;
-            if (!_services.SigScanner.TryScanText("48 83 EC 38 48 8B 92", out nint address))
-            {
-                return;
-            }
-
-            _castBarOnUpdate = Hook<CastBarOnUpdateDelegate>.FromAddress(address, CastBarOnUpdate);
+            _castBarOnUpdate = _services.GameInteropProvider.HookFromSignature<CastBarOnUpdateDelegate>(
+                "48 83 EC 38 48 8B 92",
+                CastBarOnUpdate);
         }
 
         if (_castBarOnUpdate is null)

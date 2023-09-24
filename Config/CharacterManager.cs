@@ -4,7 +4,7 @@ using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
 using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Logging;
+using Dalamud.Plugin.Services;
 
 using Newtonsoft.Json;
 
@@ -18,6 +18,8 @@ internal sealed class CharacterManager
     private readonly Configuration _configuration;
     private CharacterConfig? _characterConfig;
     private ulong? _playerID;
+
+    private IPluginLog PluginLog => _services.PluginLog;
 
     public CharacterManager(Services services, Configuration configuration)
     {
