@@ -1,7 +1,5 @@
 ﻿namespace BetterMountRoulette.UI;
 
-using BetterMountRoulette.Config.Data;
-
 using ImGuiNET;
 
 using System;

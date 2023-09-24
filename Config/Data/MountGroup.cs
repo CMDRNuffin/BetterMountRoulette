@@ -6,7 +6,6 @@ using System.Collections.Generic;
 
 internal sealed class MountGroup
 {
-    [JsonProperty("Name")]
     public string Name { get; set; } = "";
 
     [JsonProperty("EnabledMounts")]
@@ -15,12 +14,9 @@ internal sealed class MountGroup
     [JsonProperty("IncludeNewMounts")]
     public bool IncludedMeansActive { get; set; }
 
-    [JsonProperty("ForceMultiseatersInParty")]
-    public bool ForceMultiseatersInParty { get; set; } = false;
+    public bool ForceMultiseatersInParty { get; set; }
 
-    [JsonProperty("PreferMoreSeats")]
-    public bool PreferMoreSeats { get; set; } = false;
+    public bool PreferMoreSeats { get; set; }
 
-    [JsonProperty("ForceSingleSeatersWhileSolo")]
-    public bool ForceSingleSeatersWhileSolo { get; set; } = false;
+    public bool ForceSingleSeatersWhileSolo { get; set; }
 }
