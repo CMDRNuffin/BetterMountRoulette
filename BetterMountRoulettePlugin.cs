@@ -18,8 +18,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 {
     private bool _disposedValue;
 
-    public string Name => "Better Mount Roulette";
-
     public const string COMMAND_TEXT = "/pbmr";
 
     public const string MOUNT_COMMAND_TEXT = "/pmount";
@@ -162,10 +160,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         {
             _services.Chat.PrintError(e.Message);
             throw;
-        }
-        finally
-        {
-            _services.Chat.UpdateQueue();
         }
     }
 

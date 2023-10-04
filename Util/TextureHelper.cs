@@ -1,7 +1,7 @@
 ﻿namespace BetterMountRoulette.Util;
 
-using Dalamud.Data;
-using ImGuiScene;
+using Dalamud.Interface.Internal;
+using Dalamud.Plugin.Services;
 
 using System;
 using System.Collections.Generic;
@@ -9,10 +9,10 @@ using System.Linq;
 
 internal sealed class TextureHelper
 {
-    private readonly Dictionary<string, TextureWrap> _loadedTextures = new();
-    private readonly Dictionary<uint, TextureWrap> _loadedIconTextures = new();
+    private readonly Dictionary<string, IDalamudTextureWrap> _loadedTextures = new();
+    private readonly Dictionary<uint, IDalamudTextureWrap> _loadedIconTextures = new();
     private readonly Services _services;
-    private DataManager DataManager => _services.DataManager;
+    private ITextureProvider TextureProvider => _services.TextureProvider;
 
     public TextureHelper(Services services)
     {
@@ -22,12 +22,12 @@ internal sealed class TextureHelper
     public nint LoadUldTexture(string name)
     {
         string path = $"ui/uld/{name}_hr1.tex";
-        return LoadTexture(_loadedTextures, path, DataManager.GetImGuiTexture);
+        return LoadTexture(_loadedTextures, path, path => TextureProvider.GetTextureFromGame(path));
     }
 
     public nint LoadIconTexture(uint id)
     {
-        return LoadTexture(_loadedIconTextures, id, DataManager.GetImGuiTextureIcon);
+        return LoadTexture(_loadedIconTextures, id, i => TextureProvider.GetIcon(id));
     }
 
     public void Dispose()
@@ -39,12 +39,12 @@ internal sealed class TextureHelper
     }
 
     private static nint LoadTexture<TKey>(
-        Dictionary<TKey, TextureWrap> cache,
+        Dictionary<TKey, IDalamudTextureWrap> cache,
         TKey key,
-        Func<TKey, TextureWrap?> loadFunc)
+        Func<TKey, IDalamudTextureWrap?> loadFunc)
         where TKey : notnull
     {
-        if (cache.TryGetValue(key, out TextureWrap? texture))
+        if (cache.TryGetValue(key, out IDalamudTextureWrap? texture))
         {
             return texture.ImGuiHandle;
         }

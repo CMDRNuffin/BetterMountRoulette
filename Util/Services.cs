@@ -1,13 +1,9 @@
 ﻿namespace BetterMountRoulette.Util;
 
-using Dalamud.Data;
 using Dalamud.Game;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 
 using Lumina;
 
@@ -21,27 +17,39 @@ internal sealed class Services
     internal SigScanner SigScanner { get; private set; } = null!;
 
     [PluginService]
-    internal CommandManager CommandManager { get; private set; } = null!;
+    internal ICommandManager CommandManager { get; private set; } = null!;
 
     [PluginService]
-    public GameGui GameGui { get; private set; } = null!;
+    public IGameGui GameGui { get; private set; } = null!;
 
     [PluginService]
-    public DataManager DataManager { get; private set; } = null!;
+    public IDataManager DataManager { get; private set; } = null!;
 
     internal GameData GameData => DataManager.GameData;
 
     [PluginService]
-    internal ChatGui Chat { get; private set; } = null!;
+    internal IChatGui Chat { get; private set; } = null!;
 
     [PluginService]
-    internal Condition Condition { get; private set; } = null!;
+    internal ICondition Condition { get; private set; } = null!;
 
     [PluginService]
-    internal ClientState ClientState { get; private set; } = null!;
+    internal IClientState ClientState { get; private set; } = null!;
 
     [PluginService]
-    internal Framework Framework { get; private set; } = null!;
+    internal IFramework Framework { get; private set; } = null!;
+
+    [PluginService]
+    internal IGameInteropProvider GameInterop { get; private set; } = null!;
+
+    [PluginService]
+    internal IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+
+    [PluginService]
+    internal ITextureProvider TextureProvider { get; private set; } = null!;
+
+    [PluginService]
+    internal IPluginLog PluginLog { get; private set; } = null!;
 
     internal TextureHelper TextureHelper { get; }
 
@@ -78,12 +86,12 @@ internal sealed class Services
         TextureHelper = new(this);
     }
 
-    private void OnLogin(object? sender, EventArgs e)
+    private void OnLogin()
     {
         Framework.Update += OnFrameworkUpdate;
     }
 
-    private void OnFrameworkUpdate(Framework framework)
+    private void OnFrameworkUpdate(IFramework framework)
     {
         if (ClientState.LocalPlayer is null)
         {

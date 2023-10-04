@@ -33,7 +33,7 @@ internal sealed class ActionHandler : IDisposable
             return;
         }
 
-        _useActionHook = Hook<UseActionHandler>.FromAddress(renderAddress, OnUseAction);
+        _useActionHook = _services.GameInterop.HookFromAddress<UseActionHandler>(renderAddress, OnUseAction);
         _useActionHook.Enable();
         _castBarHelper.Enable();
     }
@@ -55,8 +55,8 @@ internal sealed class ActionHandler : IDisposable
 
         string? groupName = (actionID, actionType) switch
         {
-            (9, ActionType.General) => CharacterConfig.MountRouletteGroup,
-            (24, ActionType.General) => CharacterConfig.FlyingMountRouletteGroup,
+            (9, ActionType.GeneralAction) => CharacterConfig.MountRouletteGroup,
+            (24, ActionType.GeneralAction) => CharacterConfig.FlyingMountRouletteGroup,
             _ => null,
         };
 
@@ -83,13 +83,13 @@ internal sealed class ActionHandler : IDisposable
         if (hide)
         {
             oldActionId = hideActionID;
-            oldActionType = ActionType.General;
+            oldActionType = ActionType.GeneralAction;
             isRouletteActionID = true;
         }
 
         switch (oldActionType)
         {
-            case ActionType.General when isRouletteActionID && actionType != oldActionType:
+            case ActionType.GeneralAction when isRouletteActionID && actionType != oldActionType:
                 _castBarHelper.Show = false;
                 _castBarHelper.IsFlyingRoulette = oldActionId == 24;
                 _castBarHelper.MountID = actionID;

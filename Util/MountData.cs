@@ -7,7 +7,6 @@ using Lumina.Text;
 
 internal sealed class MountData
 {
-    private nint? _mountIcon;
     private readonly TextureHelper _textureHelper;
 
     public uint ID { get; init; }
@@ -28,8 +27,7 @@ internal sealed class MountData
 
     public nint GetIcon()
     {
-        _mountIcon ??= _textureHelper.LoadIconTexture(IconID);
-        return _mountIcon!.Value;
+        return _textureHelper.LoadIconTexture(IconID);
     }
 
     public unsafe bool IsAvailable(Pointer<ActionManager> actionManager)
