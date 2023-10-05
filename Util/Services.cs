@@ -14,7 +14,7 @@ internal sealed class Services
     internal readonly DalamudPluginInterface DalamudPluginInterface;
 
     [PluginService]
-    internal SigScanner SigScanner { get; private set; } = null!;
+    internal ISigScanner SigScanner { get; private set; } = null!;
 
     [PluginService]
     internal ICommandManager CommandManager { get; private set; } = null!;
