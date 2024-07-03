@@ -27,7 +27,7 @@ internal sealed class CharacterManager
         _configuration = configuration;
     }
 
-    public CharacterConfig GetCharacterConfig(ulong playerID, PlayerCharacter character)
+    public CharacterConfig GetCharacterConfig(ulong playerID, IPlayerCharacter character)
     {
         if (_characterConfig is { } cfg && playerID == _playerID)
         {

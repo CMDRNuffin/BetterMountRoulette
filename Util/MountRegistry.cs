@@ -126,7 +126,7 @@ internal sealed class MountRegistry
         int partySize;
         unsafe
         {
-            partySize = GroupManager.Instance()->MemberCount;
+            partySize = GroupManager.Instance()->MainGroup.MemberCount;
         }
 
         if (group.ForceMultiseatersInParty && partySize > 1)

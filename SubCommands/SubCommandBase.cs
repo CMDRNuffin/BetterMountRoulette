@@ -6,7 +6,6 @@ using Dalamud.Plugin.Services;
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 internal abstract class SubCommandBase : ISubCommand
 {
@@ -33,7 +32,7 @@ internal abstract class SubCommandBase : ISubCommand
 
     public bool Execute(string[] parameter)
     {
-        if (parameter.Length == 1 && parameter[0].ToLower(CultureInfo.CurrentCulture) == "help")
+        if (parameter.Length == 1 && "help".Equals(parameter[0], StringComparison.OrdinalIgnoreCase))
         {
             PrintHelp();
             return true;

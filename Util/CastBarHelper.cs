@@ -56,7 +56,7 @@ internal sealed class CastBarHelper : IDisposable
         return value is null || value == comparand;
     }
 
-    private unsafe void CastBarOnUpdate(AddonEvent type, AddonArgs args)
+    private unsafe void CastBarOnUpdate(AddonEvent _, AddonArgs args)
     {
         if (!_shouldUpdate)
         {
@@ -114,7 +114,7 @@ internal sealed class CastBarHelper : IDisposable
             ReadOnlySpan<byte> text = mountRoulette.Value.Text.RawData;
 
             component->IconId = iconID;
-            component->IconImage->LoadIconTexture(iconID, 0);
+            component->IconImage->LoadIconTexture((uint)iconID, 0);
             skillNameText->SetText(text);
         }
         else if (_lastCastInfo is { } /* same as "not null", but nameable */ castInfo)
@@ -124,7 +124,7 @@ internal sealed class CastBarHelper : IDisposable
             // TODO: (actiontype, actionid) to (icon, text) happens and just call
             // TODO: that instead.
             component->IconId = castInfo.IconID;
-            component->IconImage->LoadIconTexture((int)component->IconId, 0);
+            component->IconImage->LoadIconTexture((uint)component->IconId, 0);
             skillNameText->SetText(castInfo.Text);
             _lastCastInfo = null;
         }

@@ -26,8 +26,8 @@ internal sealed class ActionHandler : IDisposable
         _services = services;
         _mountRegistry = mountRegistry;
         _castBarHelper = new CastBarHelper(_services);
-        nint renderAddress = (nint)ActionManager.Addresses.UseAction.Value;
-        if (renderAddress is 0)
+        void* renderAddress = ActionManager.MemberFunctionPointers.UseAction;
+        if (renderAddress is null)
         {
             windowManager.DebugWindow.Broken("Unable to load UseAction address");
             return;

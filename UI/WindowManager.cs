@@ -123,7 +123,7 @@ internal sealed class WindowManager
 
         public void AddWindow(IWindow window)
         {
-            if (!_windows.Any() || _windows.Last().IsDialog)
+            if (_windows.Count == 0 || _windows.Last().IsDialog)
             {
                 _windows.Add((new List<IWindow>(), false));
             }

@@ -11,7 +11,7 @@ using System;
 
 internal sealed class Services
 {
-    internal readonly DalamudPluginInterface DalamudPluginInterface;
+    internal readonly IDalamudPluginInterface DalamudPluginInterface;
 
     [PluginService]
     internal ISigScanner SigScanner { get; private set; } = null!;
@@ -79,7 +79,7 @@ internal sealed class Services
         }
     }
 
-    public Services(DalamudPluginInterface pluginInterface)
+    public Services(IDalamudPluginInterface pluginInterface)
     {
         DalamudPluginInterface = pluginInterface;
         _ = pluginInterface.Inject(this);

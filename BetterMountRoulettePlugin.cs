@@ -41,12 +41,9 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     internal readonly CharacterManager CharacterManager;
     private readonly ISubCommand _command;
 
-    public unsafe BetterMountRoulettePlugin(DalamudPluginInterface pluginInterface)
+    public unsafe BetterMountRoulettePlugin(IDalamudPluginInterface pluginInterface)
     {
-        if (pluginInterface is null)
-        {
-            throw new ArgumentNullException(nameof(pluginInterface));
-        }
+        ArgumentNullException.ThrowIfNull(pluginInterface);
 
         _services = new Services(pluginInterface);
         TextureHelper = new TextureHelper(_services);
@@ -199,8 +196,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             _services.DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
             _services.DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
-
-            TextureHelper.Dispose();
 
             _ = _services.CommandManager.RemoveHandler(COMMAND_TEXT);
             _ = _services.CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);

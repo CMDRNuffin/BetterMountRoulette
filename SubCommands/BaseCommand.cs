@@ -36,7 +36,7 @@ internal sealed class BaseCommand : SubCommandBase
 
         string[] modes = SubCommands.Keys.Where(x => !string.IsNullOrEmpty(x))
             .Select(x => x.ToLower(CultureInfo.CurrentCulture)).ToArray();
-        if (modes.Any())
+        if (modes.Length == 0)
         {
             _ = sb.AppendLine()
                 .Append(FullCommand).AppendLine(" <mode> [help]")
