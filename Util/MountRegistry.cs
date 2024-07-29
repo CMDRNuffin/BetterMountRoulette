@@ -70,7 +70,7 @@ internal sealed class MountRegistry
         int count = 0;
         foreach (MountData mount in _mounts)
         {
-            if (mount.Unlocked = GameFunctions.HasMountUnlocked(mount.ID))
+            if (mount.Unlocked = _services.GameFunctions.HasMountUnlocked(mount.ID))
             {
                 ++count;
             }
@@ -88,7 +88,7 @@ internal sealed class MountRegistry
                {
                    IconID = mount.Icon,
                    ID = mount.RowId,
-                   Unlocked = GameFunctions.HasMountUnlocked(mount.RowId),
+                   Unlocked = _services.GameFunctions.HasMountUnlocked(mount.RowId),
                    ExtraSeats = mount.ExtraSeats,
                };
     }
@@ -146,7 +146,7 @@ internal sealed class MountRegistry
         }
         else if (group.ForceSingleSeatersWhileSolo && partySize <= 1)
         {
-            var withNoExtraSeats = available.Where(x => x.ExtraSeats == 0).ToList();
+            List<MountData> withNoExtraSeats = available.FindAll(x => x.ExtraSeats == 0);
             if (withNoExtraSeats.Count > 0)
             {
                 available = withNoExtraSeats;

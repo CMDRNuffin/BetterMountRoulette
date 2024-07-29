@@ -111,7 +111,7 @@ internal sealed class CastBarHelper : IDisposable
             // replace cast bar contents with mount roulette information.
             (int IconID, SeString Text)? mountRoulette = IsFlyingRoulette ? _flyingMountRoulette : _regularMountRoulette;
             int iconID = mountRoulette!.Value.IconID;
-            ReadOnlySpan<byte> text = mountRoulette.Value.Text.RawData;
+            string text = mountRoulette.Value.Text.RawString;
 
             component->IconId = iconID;
             component->IconImage->LoadIconTexture((uint)iconID, 0);

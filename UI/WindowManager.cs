@@ -20,9 +20,11 @@ internal sealed class WindowManager
     {
         _plugin = plugin;
         _services = services;
+
+        DebugWindow = new(services);
     }
 
-    public DebugWindow DebugWindow { get; } = new();
+    public DebugWindow DebugWindow { get; }
 
     public void Draw()
     {

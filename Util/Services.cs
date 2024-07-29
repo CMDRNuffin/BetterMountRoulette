@@ -8,10 +8,10 @@ using Dalamud.Plugin.Services;
 using Lumina;
 
 using System;
-
-internal sealed class Services
+internal sealed class Services : IDisposable
 {
     internal readonly IDalamudPluginInterface DalamudPluginInterface;
+    private bool _disposedValue;
 
     [PluginService]
     internal ISigScanner SigScanner { get; private set; } = null!;
@@ -51,6 +51,8 @@ internal sealed class Services
     [PluginService]
     internal IAddonLifecycle AddonLifecycle { get; private set; } = null!;
 
+    internal GameFunctions GameFunctions { get; }
+
     internal TextureHelper TextureHelper { get; }
 
     private event EventHandler? LoginInternal;
@@ -84,6 +86,8 @@ internal sealed class Services
         DalamudPluginInterface = pluginInterface;
         _ = pluginInterface.Inject(this);
         TextureHelper = new(this);
+
+        GameFunctions = new GameFunctions(this);
     }
 
     private void OnLogin()
@@ -100,5 +104,32 @@ internal sealed class Services
 
         Framework.Update -= OnFrameworkUpdate;
         LoginInternal?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposedValue)
+        {
+            if (disposing)
+            {
+                // TODO: dispose managed state (managed objects)
+            }
+
+            GameFunctions.Dispose();
+            _disposedValue = true;
+        }
+    }
+
+    ~Services()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: false);
+    }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }

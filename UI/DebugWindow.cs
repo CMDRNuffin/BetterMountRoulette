@@ -1,5 +1,7 @@
 ﻿namespace BetterMountRoulette.UI;
 
+using BetterMountRoulette.Util;
+
 using ImGuiNET;
 
 internal sealed class DebugWindow
@@ -8,7 +10,7 @@ internal sealed class DebugWindow
 
     private bool _isOpen;
 
-    public DebugWindow()
+    public DebugWindow(Services _)
     {
     }
 

@@ -199,6 +199,8 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             _ = _services.CommandManager.RemoveHandler(COMMAND_TEXT);
             _ = _services.CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);
+
+            _services.Dispose();
             _actionHandler.Dispose();
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
