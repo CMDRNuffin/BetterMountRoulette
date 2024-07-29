@@ -96,12 +96,14 @@ internal sealed class MountGroupPage
         }
     }
 
-    private static void RenderGroupSettings(MountGroup group, out bool enableNewMounts)
+    private void RenderGroupSettings(MountGroup group, out bool enableNewMounts)
     {
         enableNewMounts = !group.IncludedMeansActive;
         bool forceMultiseatersInParty = group.ForceMultiseatersInParty;
         bool preferMoreSeats = group.PreferMoreSeats;
         bool forceSingleSeatersWhileSolo = group.ForceSingleSeatersWhileSolo;
+        bool fastMode = group.FastMode != FastMode.Off;
+        bool fastModeAlways = group.FastMode == FastMode.On;
 
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
 
@@ -119,9 +121,26 @@ internal sealed class MountGroupPage
         _ = ImGui.Checkbox("Use only single-seated mounts while solo", ref forceSingleSeatersWhileSolo);
         ControlHelper.Tooltip("Also applies while in a cross-world party.");
 
+        _ = ImGui.Checkbox("Use highest ground speed mount", ref fastMode);
+
+        IEnumerable<string> fastMounts = _plugin.MountRegistry.GetFastMountNames();
+
+        ControlHelper.Tooltip(
+            $"Limits mount selection to {string.Join("/", fastMounts)} if at least one of them is available unless a "
+            + "mount speed upgrade or flying is available and was unlocked in the current area.");
+
+        ImGui.Indent();
+        ImGui.BeginDisabled(!fastMode);
+        _ = ImGui.Checkbox("Also use highest ground speed mount with flying unlocked", ref fastModeAlways);
+        ImGui.EndDisabled();
+        ImGui.Unindent();
+
+        ControlHelper.Tooltip("Limits mount selection regardless of flying unlock status.");
+
         group.ForceMultiseatersInParty = forceMultiseatersInParty;
         group.PreferMoreSeats = preferMoreSeats;
         group.ForceSingleSeatersWhileSolo = forceSingleSeatersWhileSolo;
+        group.FastMode = fastModeAlways ? FastMode.On : fastMode ? FastMode.IfGrounded : FastMode.Off;
     }
 
     private static void UpdateMountSelectionData(MountGroup group, List<MountData> unlockedMounts, bool enableNewMounts)

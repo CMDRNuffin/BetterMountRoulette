@@ -19,6 +19,8 @@ internal sealed class MountData
 
     public int ExtraSeats { get; set; }
 
+    public bool IsFast { get; set; }
+
     public MountData(TextureHelper textureHelper, SeString name)
     {
         _textureHelper = textureHelper;

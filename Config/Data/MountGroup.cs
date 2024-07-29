@@ -19,4 +19,13 @@ internal sealed class MountGroup
     public bool PreferMoreSeats { get; set; }
 
     public bool ForceSingleSeatersWhileSolo { get; set; }
+
+    public FastMode FastMode { get; set; }
+}
+
+public enum FastMode
+{
+    Off = 0,
+    IfGrounded = 1,
+    On = 2,
 }

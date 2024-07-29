@@ -24,6 +24,7 @@ internal sealed class MountRegistry
     private readonly List<MountData> _mounts = new();
     private bool _isInitialized;
     private readonly object _lock = new();
+    private string[]? _fastMountNames;
 
     public int UnlockedMountCount { get; private set; }
 
@@ -90,6 +91,7 @@ internal sealed class MountRegistry
                    ID = mount.RowId,
                    Unlocked = _services.GameFunctions.HasMountUnlocked(mount.RowId),
                    ExtraSeats = mount.ExtraSeats,
+                   IsFast = mount.RowId is 71 or 318 /* TODO: find a better way to get this info */
                };
     }
 
@@ -122,6 +124,26 @@ internal sealed class MountRegistry
     public uint GetRandom(Pointer<ActionManager> actionManager, MountGroup group)
     {
         List<MountData> available = GetAvailableMounts(actionManager, group, out int largestExtraSeatNumber);
+
+        switch (group.FastMode)
+        {
+            case FastMode.On:
+            case FastMode.IfGrounded when !_services.GameFunctions.IsFlightUnlocked():
+                (byte maxSpeed, byte currentSpeed) = _services.GameFunctions.GetCurrentTerritoryMountSpeedInfo();
+
+                if (maxSpeed > 0 && currentSpeed == 0)
+                {
+                    List<MountData> fastMounts = available.FindAll(x => x.IsFast);
+                    if (fastMounts.Count > 0)
+                    {
+                        available = fastMounts;
+                    }
+                }
+
+                break;
+            default:
+                break;
+        }
 
         int partySize;
         unsafe
@@ -167,5 +189,10 @@ internal sealed class MountRegistry
 
         int index = Random.Shared.Next(available.Count);
         return available[index].ID;
+    }
+
+    internal IEnumerable<string> GetFastMountNames()
+    {
+        return _fastMountNames ??= _mounts.Where(x => x.IsFast).Select(x => x.Name.RawString).ToArray();
     }
 }
