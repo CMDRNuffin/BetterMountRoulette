@@ -14,6 +14,13 @@ internal sealed class MountGroupPage
     private readonly BetterMountRoulettePlugin _plugin;
     private readonly MountRenderer _mountRenderer;
     private string? _currentMountGroup;
+    private MountGroupPageEnum _mode = MountGroupPageEnum.Settings;
+
+    private enum MountGroupPageEnum
+    {
+        Settings,
+        Mounts
+    }
 
     internal MountGroupPage(BetterMountRoulettePlugin plugin, Services services)
     {
@@ -35,28 +42,65 @@ internal sealed class MountGroupPage
             return;
         }
 
-        RenderGroupSettings(group, out bool enableNewMounts);
+        bool isSettingsOpen = _mode == MountGroupPageEnum.Settings;
+        bool isMountsOpen = _mode == MountGroupPageEnum.Mounts;
+        bool enableNewMounts = !group.IncludedMeansActive;
+
+        ImGui.GetStateStorage().SetInt(ImGui.GetID("Settings"), isSettingsOpen ? 1 : 0);
+        ImGui.BeginDisabled(isSettingsOpen);
+        if (ImGui.CollapsingHeader("Settings"))
+        {
+            ImGui.EndDisabled();
+            isSettingsOpen = true;
+            RenderGroupSettings(group, ref enableNewMounts);
+        }
+        else
+        {
+            ImGui.EndDisabled();
+        }
+
         List<MountData> unlockedMounts = _plugin.MountRegistry.GetUnlockedMounts();
         UpdateMountSelectionData(group, unlockedMounts, enableNewMounts);
 
-        int pages = MountRenderer.GetPageCount(_plugin.MountRegistry.UnlockedMountCount);
-        if (pages == 0)
+        ImGui.GetStateStorage().SetInt(ImGui.GetID("Mounts"), isMountsOpen ? 1 : 0);
+        ImGui.BeginDisabled(isMountsOpen);
+        if (ImGui.CollapsingHeader("Mounts"))
         {
-            ImGui.Text("Please unlock at least one mount.");
-        }
-        else if (ImGui.BeginTabBar("mount_pages"))
-        {
-            for (int page = 1; page <= pages; page++)
+            ImGui.EndDisabled();
+            isMountsOpen = true;
+            int pages = MountRenderer.GetPageCount(_plugin.MountRegistry.UnlockedMountCount);
+            if (pages == 0)
             {
-                if (ImGui.BeginTabItem($"{page}"))
-                {
-                    RenderMountListPage(page, group, unlockedMounts);
-                    ImGui.EndTabItem();
-                }
+                ImGui.Text("Please unlock at least one mount.");
             }
+            else if (ImGui.BeginTabBar("mount_pages"))
+            {
+                for (int page = 1; page <= pages; page++)
+                {
+                    if (ImGui.BeginTabItem($"{page}"))
+                    {
+                        RenderMountListPage(page, group, unlockedMounts);
+                        ImGui.EndTabItem();
+                    }
+                }
 
-            ImGui.SameLine();
-            ImGui.EndTabBar();
+                ImGui.SameLine();
+                ImGui.EndTabBar();
+            }
+        }
+        else
+        {
+            ImGui.EndDisabled();
+        }
+
+        switch (_mode)
+        {
+            case MountGroupPageEnum.Settings when isMountsOpen:
+                _mode = MountGroupPageEnum.Mounts;
+                break;
+            case MountGroupPageEnum.Mounts when isSettingsOpen:
+                _mode = MountGroupPageEnum.Settings;
+                break;
         }
     }
 
@@ -96,9 +140,8 @@ internal sealed class MountGroupPage
         }
     }
 
-    private void RenderGroupSettings(MountGroup group, out bool enableNewMounts)
+    private void RenderGroupSettings(MountGroup group, ref bool enableNewMounts)
     {
-        enableNewMounts = !group.IncludedMeansActive;
         bool forceMultiseatersInParty = group.ForceMultiseatersInParty;
         bool preferMoreSeats = group.PreferMoreSeats;
         bool forceSingleSeatersWhileSolo = group.ForceSingleSeatersWhileSolo;
@@ -126,12 +169,13 @@ internal sealed class MountGroupPage
         IEnumerable<string> fastMounts = _plugin.MountRegistry.GetFastMountNames();
 
         ControlHelper.Tooltip(
-            $"Limits mount selection to {string.Join("/", fastMounts)} if at least one of them is available unless a "
-            + "mount speed upgrade or flying is available and was unlocked in the current area.");
+            $"If they are available and active, limits mount selection to {string.Join("/", fastMounts)}\n"
+            + "in areas where increased mount speed is available unless at least the first enhanced\n"
+            + "level of mount speed or flying is unlocked.");
 
         ImGui.Indent();
         ImGui.BeginDisabled(!fastMode);
-        _ = ImGui.Checkbox("Also use highest ground speed mount with flying unlocked", ref fastModeAlways);
+        _ = ImGui.Checkbox("Always use highest ground speed mount even if flight is unlocked", ref fastModeAlways);
         ImGui.EndDisabled();
         ImGui.Unindent();
 

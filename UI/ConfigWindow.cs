@@ -7,6 +7,7 @@ using ImGuiNET;
 
 using System;
 using System.Linq;
+using System.Numerics;
 
 internal sealed class ConfigWindow : IWindow
 {
@@ -14,6 +15,7 @@ internal sealed class ConfigWindow : IWindow
     private readonly BetterMountRoulettePlugin _plugin;
     private readonly MountGroupPage _mountGroupPage;
     private readonly CharacterManagementRenderer _charManagementRenderer;
+    private float _windowMinWidth;
 
     public ConfigWindow(BetterMountRoulettePlugin plugin, Services services)
     {
@@ -44,6 +46,7 @@ internal sealed class ConfigWindow : IWindow
 
     public void Draw()
     {
+        ImGui.SetNextWindowSizeConstraints(new Vector2(_windowMinWidth, 0), new Vector2(float.MaxValue, float.MaxValue));
         if (ImGui.Begin("Better Mount Roulette", ref _isOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
             if (_plugin.CharacterConfig is not CharacterConfig characterConfig)
@@ -68,6 +71,8 @@ internal sealed class ConfigWindow : IWindow
                     }
                 }
             }
+
+            _windowMinWidth = ImGui.GetWindowWidth();
         }
 
         ImGui.End();
