@@ -169,9 +169,10 @@ internal sealed class MountGroupPage
         IEnumerable<string> fastMounts = _plugin.MountRegistry.GetFastMountNames();
 
         ControlHelper.Tooltip(
-            $"If they are available and active, limits mount selection to {string.Join("/", fastMounts)}\n"
-            + "in areas where increased mount speed is available unless at least the first enhanced\n"
-            + "level of mount speed or flying is unlocked.");
+            $"Limits mount selection to {string.Join("/", fastMounts)} in areas where increased\n"
+            + "mount speed is available unless at least the first enhanced level of mount\n"
+            + "speed or flying is unlocked.\n"
+            + "Requires at least one of these mounts to be unlocked and active to take effect.");
 
         ImGui.Indent();
         ImGui.BeginDisabled(!fastMode);
