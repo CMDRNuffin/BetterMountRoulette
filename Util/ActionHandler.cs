@@ -20,7 +20,6 @@ internal sealed class ActionHandler : IDisposable
 
     public unsafe ActionHandler(
         Services services,
-        WindowManager windowManager,
         MountRegistry mountRegistry)
     {
         _services = services;
@@ -29,7 +28,7 @@ internal sealed class ActionHandler : IDisposable
         void* renderAddress = ActionManager.MemberFunctionPointers.UseAction;
         if (renderAddress is null)
         {
-            windowManager.DebugWindow.Broken("Unable to load UseAction address");
+            _services.PluginLog.Debug("Unable to load UseAction address");
             return;
         }
 

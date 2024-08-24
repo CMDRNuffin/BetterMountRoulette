@@ -82,6 +82,10 @@
       <HintPath>$(DalamudLibPath)Lumina.Excel.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="Iced">
+      <HintPath>$(DalamudLibPath)Iced.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

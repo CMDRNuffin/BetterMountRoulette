@@ -54,7 +54,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
         try
         {
-            _actionHandler = new ActionHandler(_services, WindowManager, MountRegistry);
+            _actionHandler = new ActionHandler(_services, MountRegistry);
             Configuration config = pluginInterface.GetPluginConfig() as Configuration ?? Configuration.Init();
             ConfigVersionManager.DoMigration(config);
             SaveConfig(config);

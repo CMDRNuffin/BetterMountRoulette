@@ -5,22 +5,76 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using System;
 using Lumina.Excel.GeneratedSheets2;
 using Lumina.Excel;
+using System.Collections.Generic;
+using Dalamud.Memory;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Iced.Intel;
 
 internal sealed class GameFunctions : IDisposable
 {
     private readonly Services _services;
+    private readonly Dictionary<ushort, uint[]?> _maxSpeedUnlockCache = new();
 
     private bool _disposedValue;
+
+    private readonly unsafe uint* _mountGuideRouletteIDs;
 
     public unsafe GameFunctions(Services services)
     {
         _services = services;
         services.GameInteropProvider.InitializeFromAttributes(this);
+
+        _mountGuideRouletteIDs = (uint*)FindMountRouletteActionIDsTable();
+        SetSecondaryMountRouletteActionId(24);
     }
 
     public unsafe bool HasMountUnlocked(uint id)
     {
         return PlayerState.Instance()->IsMountUnlocked(id);
+    }
+
+    private unsafe void SetSecondaryMountRouletteActionId(uint actionId)
+    {
+        if (_mountGuideRouletteIDs == null)
+        {
+            return;
+        }
+
+        MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, MemoryProtection.ReadWrite, out MemoryProtection oldPermission);
+        _mountGuideRouletteIDs[1] = actionId;
+        _ = MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, oldPermission);
+    }
+
+    private static unsafe nint FindMountRouletteActionIDsTable(int offset = 0)
+    {
+        nint vtable = (nint)AgentModule.Instance()->GetAgentByInternalId(AgentId.MountNotebook)->VirtualTable;
+        byte* func = *((byte**)vtable + 24);
+        try
+        {
+            var reader = new UnsafeCodeReader(func);
+            var decoder = Decoder.Create(64, reader, (ulong)func, DecoderOptions.AMD);
+            while (reader.CanReadByte)
+            {
+                Instruction instruction = decoder.Decode();
+                if (instruction.IsInvalid)
+                {
+                    continue;
+                }
+
+                if (instruction.Op0Kind is OpKind.Memory || instruction.Op1Kind is OpKind.Memory)
+                {
+                    return (IntPtr)instruction.MemoryDisplacement64;
+                }
+            }
+        }
+#pragma warning disable CA1031 // Do not catch general exception types
+        catch
+        {
+            // ignored
+        }
+#pragma warning restore CA1031 // Do not catch general exception types
+
+        return nint.Zero;
     }
 
     public unsafe bool IsFlightUnlocked()
@@ -83,6 +137,11 @@ internal sealed class GameFunctions : IDisposable
                 // TODO: dispose managed state (managed objects)
             }
 
+            if (_mountGuideRouletteIDs != null)
+            {
+                SetSecondaryMountRouletteActionId(0);
+            }
+
             _disposedValue = true;
         }
     }
@@ -98,5 +157,35 @@ internal sealed class GameFunctions : IDisposable
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
+    }
+
+    private sealed unsafe class UnsafeCodeReader : CodeReader
+    {
+        private bool _hasEncounteredCC;
+        private readonly byte* _address;
+        private int _pos;
+
+        public UnsafeCodeReader(byte* address)
+        {
+            _address = address;
+        }
+
+        public bool CanReadByte => !_hasEncounteredCC;
+
+        public override int ReadByte()
+        {
+            if (_hasEncounteredCC)
+            {
+                return -1;
+            }
+
+            byte res = *(_address + _pos++);
+            if (res == 0xCC)
+            {
+                _hasEncounteredCC = true;
+            }
+
+            return res;
+        }
     }
 }

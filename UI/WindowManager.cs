@@ -20,16 +20,11 @@ internal sealed class WindowManager
     {
         _plugin = plugin;
         _services = services;
-
-        DebugWindow = new(services);
     }
-
-    public DebugWindow DebugWindow { get; }
 
     public void Draw()
     {
         _windows.Draw();
-        DebugWindow.Draw();
 
         foreach (IWindow item in _removeList)
         {

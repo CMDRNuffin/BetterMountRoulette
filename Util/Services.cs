@@ -8,6 +8,7 @@ using Dalamud.Plugin.Services;
 using Lumina;
 
 using System;
+
 internal sealed class Services : IDisposable
 {
     internal readonly IDalamudPluginInterface DalamudPluginInterface;
