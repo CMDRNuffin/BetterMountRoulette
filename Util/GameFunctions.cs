@@ -24,57 +24,13 @@ internal sealed class GameFunctions : IDisposable
         _services = services;
         services.GameInteropProvider.InitializeFromAttributes(this);
 
-        _mountGuideRouletteIDs = (uint*)FindMountRouletteActionIDsTable();
+        _mountGuideRouletteIDs = FindMountRouletteActionIDsTable();
         SetSecondaryMountRouletteActionId(24);
     }
 
     public unsafe bool HasMountUnlocked(uint id)
     {
         return PlayerState.Instance()->IsMountUnlocked(id);
-    }
-
-    private unsafe void SetSecondaryMountRouletteActionId(uint actionId)
-    {
-        if (_mountGuideRouletteIDs == null)
-        {
-            return;
-        }
-
-        MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, MemoryProtection.ReadWrite, out MemoryProtection oldPermission);
-        _mountGuideRouletteIDs[1] = actionId;
-        _ = MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, oldPermission);
-    }
-
-    private static unsafe nint FindMountRouletteActionIDsTable(int offset = 0)
-    {
-        nint vtable = (nint)AgentModule.Instance()->GetAgentByInternalId(AgentId.MountNotebook)->VirtualTable;
-        byte* func = *((byte**)vtable + 24);
-        try
-        {
-            var reader = new UnsafeCodeReader(func);
-            var decoder = Decoder.Create(64, reader, (ulong)func, DecoderOptions.AMD);
-            while (reader.CanReadByte)
-            {
-                Instruction instruction = decoder.Decode();
-                if (instruction.IsInvalid)
-                {
-                    continue;
-                }
-
-                if (instruction.Op0Kind is OpKind.Memory || instruction.Op1Kind is OpKind.Memory)
-                {
-                    return (IntPtr)instruction.MemoryDisplacement64;
-                }
-            }
-        }
-#pragma warning disable CA1031 // Do not catch general exception types
-        catch
-        {
-            // ignored
-        }
-#pragma warning restore CA1031 // Do not catch general exception types
-
-        return nint.Zero;
     }
 
     public unsafe bool IsFlightUnlocked()
@@ -134,6 +90,57 @@ internal sealed class GameFunctions : IDisposable
         }
 
         return (maxSpeed, currentSpeed);
+    }
+
+    private unsafe void SetSecondaryMountRouletteActionId(uint actionId)
+    {
+        if (_mountGuideRouletteIDs == null)
+        {
+            return;
+        }
+
+        MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, MemoryProtection.ReadWrite, out MemoryProtection oldPermission);
+        _mountGuideRouletteIDs[1] = actionId;
+        _ = MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, oldPermission);
+    }
+
+    private static unsafe uint* FindMountRouletteActionIDsTable()
+    {
+        nint vtable = (nint)AgentModule.Instance()->GetAgentByInternalId(AgentId.MountNotebook)->VirtualTable;
+        return (uint*)GetStaticAddressFromVFunc(vtable, 24);
+    }
+
+    private static unsafe nint GetStaticAddressFromVFunc(nint vtable, int vfunc, int offset = 0)
+    {
+        // adapted from GetStaticAddressFromSig, see
+        // https://github.com/goatcorp/Dalamud/blob/cddad72066ba45633896b81e38f478bce1aaf674/Dalamud/Game/SigScanner.cs
+        byte* func = *((byte**)vtable + vfunc);
+        try
+        {
+            var reader = new UnsafeCodeReader(func);
+            var decoder = Decoder.Create(64, reader, (ulong)func, DecoderOptions.AMD);
+            while (reader.CanReadByte)
+            {
+                Instruction instruction = decoder.Decode();
+                if (instruction.IsInvalid)
+                {
+                    continue;
+                }
+
+                if (instruction.Op0Kind is OpKind.Memory || instruction.Op1Kind is OpKind.Memory)
+                {
+                    return (IntPtr)instruction.MemoryDisplacement64;
+                }
+            }
+        }
+#pragma warning disable CA1031 // Do not catch general exception types
+        catch
+        {
+            // ignored
+        }
+#pragma warning restore CA1031 // Do not catch general exception types
+
+        return nint.Zero;
     }
 
     private unsafe void Dispose(bool disposing)
