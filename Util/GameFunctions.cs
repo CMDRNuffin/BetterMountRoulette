@@ -94,38 +94,46 @@ internal sealed class GameFunctions : IDisposable
 
     public unsafe (byte MaxSpeed, byte CurrentSpeed) GetCurrentTerritoryMountSpeedInfo()
     {
-        TerritoryType? territoryType = _services.DataManager.GetExcelSheet<TerritoryType>()
-            ?.GetRow(_services.ClientState.TerritoryType);
-        if (territoryType == null)
+        uint[]? maxSpeedUnlockIds;
+        if(!_maxSpeedUnlockCache.TryGetValue(_services.ClientState.TerritoryType, out maxSpeedUnlockIds))
+        {
+            TerritoryType? territoryType = _services.DataManager.GetExcelSheet<TerritoryType>()
+                ?.GetRow(_services.ClientState.TerritoryType);
+            if (territoryType != null)
+            {
+                if (territoryType.MountSpeed.Row > 0 && territoryType.MountSpeed.Value is { } mountSpeed)
+                {
+                    maxSpeedUnlockIds = (mountSpeed.Quest.Row, mountSpeed.Unknown0) switch
+                    {
+                        (0, _) => null,
+                        (uint i, 0) => [i],
+                        (uint i, uint j) => [i, j]
+                    };
+                }
+            }
+
+            _maxSpeedUnlockCache[_services.ClientState.TerritoryType] = maxSpeedUnlockIds;
+        }
+
+        if (maxSpeedUnlockIds == null)
         {
             return (0, 0);
         }
 
-        if (territoryType.MountSpeed.Row > 0 && territoryType.MountSpeed.Value is { } mountSpeed)
+        byte maxSpeed = 0;
+        byte currentSpeed = 0;
+
+        foreach (uint unlockId in maxSpeedUnlockIds)
         {
-            byte maxSpeed = 0;
-            byte currentSpeed = 0;
+            maxSpeed += 1;
 
-            uint[] unlockIds = [mountSpeed.Quest.Row, mountSpeed.Unknown0];
-            foreach (uint unlockId in unlockIds)
+            if (UIState.Instance()->IsUnlockLinkUnlockedOrQuestCompleted(unlockId))
             {
-                if (unlockId == 0)
-                {
-                    break;
-                }
-
-                maxSpeed += 1;
-
-                if (UIState.Instance()->IsUnlockLinkUnlockedOrQuestCompleted(unlockId))
-                {
-                    currentSpeed += 1;
-                }
+                currentSpeed += 1;
             }
-
-            return (maxSpeed, currentSpeed);
         }
 
-        return (0, 0);
+        return (maxSpeed, currentSpeed);
     }
 
     private unsafe void Dispose(bool disposing)
