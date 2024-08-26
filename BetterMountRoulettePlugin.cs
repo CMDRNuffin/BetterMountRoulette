@@ -136,6 +136,11 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
     internal void SaveConfig(Configuration configuration)
     {
+        if (configuration is null || _services is null)
+        {
+            return;
+        }
+
         _services.DalamudPluginInterface.SavePluginConfig(configuration);
     }
 
@@ -194,14 +199,18 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             SaveConfig(Configuration);
 
-            _services.DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
-            _services.DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
+            if (_services != null)
+            {
+                _services.DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
+                _services.DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
 
-            _ = _services.CommandManager.RemoveHandler(COMMAND_TEXT);
-            _ = _services.CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);
+                _ = _services.CommandManager.RemoveHandler(COMMAND_TEXT);
+                _ = _services.CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);
 
-            _services.Dispose();
-            _actionHandler.Dispose();
+                _services.Dispose();
+            }
+
+            _actionHandler?.Dispose();
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
