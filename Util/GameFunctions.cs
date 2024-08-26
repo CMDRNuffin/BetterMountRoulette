@@ -23,7 +23,7 @@ internal sealed class GameFunctions : IDisposable
 
     private bool _disposedValue;
 
-    private readonly unsafe uint* _mountGuideRouletteIDs;
+    private unsafe uint* _mountGuideRouletteIDs;
     private readonly Hook<ExdModule.Delegates.GetRowBySheetIndexAndRowIndex> _exdModuleGetRowBySheetIndexAndRowIndexHook;
 
     [Signature("E8 ?? ?? ?? ?? 0F B6 54 24 40 49 8B CD", Fallibility = Fallibility.Infallible)]
@@ -123,9 +123,17 @@ internal sealed class GameFunctions : IDisposable
             return;
         }
 
-        MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, MemoryProtection.ReadWrite, out MemoryProtection oldPermission);
-        _mountGuideRouletteIDs[1] = actionId;
-        _ = MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, oldPermission);
+        try
+        {
+            MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, MemoryProtection.ReadWrite, out MemoryProtection oldPermission);
+            _mountGuideRouletteIDs[1] = actionId;
+            _ = MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, oldPermission);
+        }
+        catch (AccessViolationException)
+        {
+            _mountGuideRouletteIDs = null;
+            _services.PluginLog.Error("Unable to change mount roulette action ID.");
+        }
     }
 
     private static unsafe uint* FindMountRouletteActionIDsTable()
