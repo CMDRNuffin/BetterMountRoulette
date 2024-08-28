@@ -6,7 +6,6 @@ using System;
 using Lumina.Excel.GeneratedSheets2;
 using Lumina.Excel;
 using System.Collections.Generic;
-using Dalamud.Memory;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Iced.Intel;
 using Dalamud.Hooking;
@@ -15,6 +14,7 @@ using FFXIVClientStructs.FFXIV.Component.Exd;
 using CSExcelRow = FFXIVClientStructs.FFXIV.Component.Excel.ExcelRow;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using Dalamud.Utility.Signatures;
+using BetterMountRoulette.Util.Hooks;
 
 internal sealed class GameFunctions : IDisposable
 {
@@ -23,11 +23,12 @@ internal sealed class GameFunctions : IDisposable
 
     private bool _disposedValue;
 
-    private unsafe uint* _mountGuideRouletteIDs;
     private readonly Hook<ExdModule.Delegates.GetRowBySheetIndexAndRowIndex> _exdModuleGetRowBySheetIndexAndRowIndexHook;
 
     [Signature("E8 ?? ?? ?? ?? 0F B6 54 24 40 49 8B CD", Fallibility = Fallibility.Infallible)]
     private readonly unsafe delegate *unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
+
+    private readonly AgentMountNoteBookHooks _agentMountNoteBookHooks;
 
     private unsafe delegate void AgentActionMenuLoadActionsDetour(AgentActionMenu* @this, bool reload);
 
@@ -42,16 +43,10 @@ internal sealed class GameFunctions : IDisposable
             ExdModuleGetRowBySheetIndexAndRowIndexHandler);
         _exdModuleGetRowBySheetIndexAndRowIndexHook.Enable();
 
-        if (_services.ClientState.IsLoggedIn)
-        {
-            // refresh action menu to add the flying mount roulette
-            _agentActionMenuLoadActions(AgentModule.Instance()->GetAgentActionMenu(), true);
-        }
+        UpdateActionMenu();
 
-        _mountGuideRouletteIDs = FindMountRouletteActionIDsTable();
-        SetSecondaryMountRouletteActionId(24);
+        _agentMountNoteBookHooks = new(services);
     }
-
     public unsafe bool HasMountUnlocked(uint id)
     {
         return PlayerState.Instance()->IsMountUnlocked(id);
@@ -116,32 +111,6 @@ internal sealed class GameFunctions : IDisposable
         return (maxSpeed, currentSpeed);
     }
 
-    private unsafe void SetSecondaryMountRouletteActionId(uint actionId)
-    {
-        if (_mountGuideRouletteIDs == null)
-        {
-            return;
-        }
-
-        try
-        {
-            MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, MemoryProtection.ReadWrite, out MemoryProtection oldPermission);
-            _mountGuideRouletteIDs[1] = actionId;
-            _ = MemoryHelper.ChangePermission((nint)_mountGuideRouletteIDs, 8, oldPermission);
-        }
-        catch (AccessViolationException)
-        {
-            _mountGuideRouletteIDs = null;
-            _services.PluginLog.Error("Unable to change mount roulette action ID.");
-        }
-    }
-
-    private static unsafe uint* FindMountRouletteActionIDsTable()
-    {
-        nint vtable = (nint)AgentModule.Instance()->GetAgentByInternalId(AgentId.MountNotebook)->VirtualTable;
-        return (uint*)GetStaticAddressFromVFunc(vtable, 24);
-    }
-
     private static unsafe nint GetStaticAddressFromVFunc(nint vtable, int vfunc, int offset = 0)
     {
         // adapted from GetStaticAddressFromSig, see
@@ -180,12 +149,25 @@ internal sealed class GameFunctions : IDisposable
         CSExcelRow* row = _exdModuleGetRowBySheetIndexAndRowIndexHook.Original(thisPtr, sheetIndex, rowIndex);
         if (sheetIndex == 0x68 /* General Action */ && rowIndex == 24 /* flying mount roulette */)
         {
-            new FlyingMountRoulette(row).EnableUIPrioirty();
+            new FlyingMountRoulette(row).EnableUIPriority();
             _exdModuleGetRowBySheetIndexAndRowIndexHook.Disable();
             _services.PluginLog.Debug("Hooked flying mount roulette");
         }
 
         return row;
+    }
+
+    private unsafe void UpdateActionMenu()
+    {
+        if (_services.ClientState.IsLoggedIn)
+        {
+            AgentActionMenu* agentActionMenu = AgentModule.Instance()->GetAgentActionMenu();
+            if (agentActionMenu->GeneralList.Count > 0)
+            {
+                // refresh action menu to add the flying mount roulette
+                _agentActionMenuLoadActions(AgentModule.Instance()->GetAgentActionMenu(), true);
+            }
+        }
     }
 
     private unsafe void Dispose(bool disposing)
@@ -197,21 +179,14 @@ internal sealed class GameFunctions : IDisposable
                 // TODO: dispose managed state (managed objects)
             }
 
-            if (_mountGuideRouletteIDs != null)
-            {
-                SetSecondaryMountRouletteActionId(0);
-            }
-
             _exdModuleGetRowBySheetIndexAndRowIndexHook.Dispose();
 
             var rouletteItem = new FlyingMountRoulette(Framework.Instance()->ExdModule->GetRowBySheetIndexAndRowIndex(0x68, 24));
             rouletteItem.DisableUIPriority();
 
-            if (_services.ClientState.IsLoggedIn)
-            {
-                // refresh action menu to remove the flying mount roulette again
-                _agentActionMenuLoadActions(AgentModule.Instance()->GetAgentActionMenu(), true);
-            }
+            UpdateActionMenu();
+
+            _agentMountNoteBookHooks.Dispose();
 
             _disposedValue = true;
         }
@@ -268,7 +243,7 @@ internal sealed class GameFunctions : IDisposable
 
         private const byte UI_PRIORITY_VALUE = 22 /* between mount roulette and minion roulette */;
 
-        public void EnableUIPrioirty()
+        public void EnableUIPriority()
         {
             if (_sheet != null)
             {
