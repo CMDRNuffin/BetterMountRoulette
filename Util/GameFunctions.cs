@@ -15,6 +15,16 @@ using CSExcelRow = FFXIVClientStructs.FFXIV.Component.Excel.ExcelRow;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using Dalamud.Utility.Signatures;
 using BetterMountRoulette.Util.Hooks;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Control;
+
+public enum MountRouletteOverride
+{
+    PlainMount = 0,
+    NormalRoulette = 1,
+    FlyingRoulette = 2,
+}
 
 internal sealed class GameFunctions : IDisposable
 {
@@ -28,15 +38,22 @@ internal sealed class GameFunctions : IDisposable
     [Signature("E8 ?? ?? ?? ?? 0F B6 54 24 40 49 8B CD", Fallibility = Fallibility.Infallible)]
     private readonly unsafe delegate *unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
 
+    [Signature("E8 ?? ?? ?? ?? 41 83 FF 04 0F 84 ?? ?? ?? ??", Fallibility = Fallibility.Infallible)]
+    private readonly Hook<ActionManagerInitializeCastBarDetour> _actionManagerInitializeCastbarHook;
+
     private readonly AgentMountNoteBookHooks _agentMountNoteBookHooks;
 
     private unsafe delegate void AgentActionMenuLoadActionsDetour(AgentActionMenu* @this, bool reload);
+    private unsafe delegate void ActionManagerInitializeCastBarDetour(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex, float castTimeElapsed);
 
     public unsafe GameFunctions(Services services)
     {
         _services = services;
         _agentActionMenuLoadActions = null;
+        _actionManagerInitializeCastbarHook = null!;
         services.GameInteropProvider.InitializeFromAttributes(this);
+
+        _actionManagerInitializeCastbarHook.Enable();
 
         _exdModuleGetRowBySheetIndexAndRowIndexHook = _services.GameInteropProvider.HookFromAddress<ExdModule.Delegates.GetRowBySheetIndexAndRowIndex>(
             ExdModule.MemberFunctionPointers.GetRowBySheetIndexAndRowIndex,
@@ -47,6 +64,9 @@ internal sealed class GameFunctions : IDisposable
 
         _agentMountNoteBookHooks = new(services);
     }
+
+    public MountRouletteOverride? NextMountRouletteOverride { get; set; }
+
     public unsafe bool HasMountUnlocked(uint id)
     {
         return PlayerState.Instance()->IsMountUnlocked(id);
@@ -144,6 +164,21 @@ internal sealed class GameFunctions : IDisposable
         return nint.Zero;
     }
 
+    private unsafe void OnActionManagerInitializeCastBar(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex, float castTimeElapsed)
+    {
+        if (chara == Control.GetLocalPlayer()) /* don't bork other players' cast bars */
+        {
+            // mount roulettes are normalized to action type = mount; action id = mount id; mount roulette index = 1 for normal, 2 for flying
+            if (actionType == ActionType.Mount && NextMountRouletteOverride is { } rouletteOverride)
+            {
+                mountRouletteIndex = (int)rouletteOverride;
+                NextMountRouletteOverride = null;
+            }
+        }
+
+        _actionManagerInitializeCastbarHook.Original(@this, chara, actionType, actionId, spellId, mountRouletteIndex, castTimeElapsed);
+    }
+
     private unsafe CSExcelRow* ExdModuleGetRowBySheetIndexAndRowIndexHandler(ExdModule* thisPtr, uint sheetIndex, uint rowIndex)
     {
         CSExcelRow* row = _exdModuleGetRowBySheetIndexAndRowIndexHook.Original(thisPtr, sheetIndex, rowIndex);
@@ -187,6 +222,7 @@ internal sealed class GameFunctions : IDisposable
             UpdateActionMenu();
 
             _agentMountNoteBookHooks.Dispose();
+            _actionManagerInitializeCastbarHook.Dispose();
 
             _disposedValue = true;
         }

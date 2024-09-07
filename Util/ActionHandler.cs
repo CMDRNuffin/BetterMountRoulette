@@ -11,10 +11,13 @@ using System;
 
 internal sealed class ActionHandler : IDisposable
 {
+    private const uint NORMAL_ROULETTE_ACTION_ID = 9;
+    private const uint FLYING_ROULETTE_ACTION_ID = 24;
+
     private readonly Services _services;
     private readonly MountRegistry _mountRegistry;
     private readonly Hook<UseActionHandler>? _useActionHook;
-    private readonly CastBarHelper _castBarHelper;
+    private readonly GameFunctions _gameFunctions;
     private (bool hide, uint actionID) _hideAction;
     private bool _disposedValue;
 
@@ -24,7 +27,7 @@ internal sealed class ActionHandler : IDisposable
     {
         _services = services;
         _mountRegistry = mountRegistry;
-        _castBarHelper = new CastBarHelper(_services);
+        _gameFunctions = _services.GameFunctions;
         void* renderAddress = ActionManager.MemberFunctionPointers.UseAction;
         if (renderAddress is null)
         {
@@ -34,7 +37,6 @@ internal sealed class ActionHandler : IDisposable
 
         _useActionHook = _services.GameInteropProvider.HookFromAddress<UseActionHandler>(renderAddress, OnUseAction);
         _useActionHook.Enable();
-        _castBarHelper.Enable();
     }
 
     public unsafe delegate byte UseActionHandler(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID = 3758096384U, uint a4 = 0U, uint a5 = 0U, uint a6 = 0U, void* a7 = default);
@@ -52,14 +54,13 @@ internal sealed class ActionHandler : IDisposable
             return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
         }
 
-        string? groupName = (actionID, actionType) switch
+        (string? groupName, bool isRouletteActionID) = (actionID, actionType) switch
         {
-            (9, ActionType.GeneralAction) => CharacterConfig.MountRouletteGroup,
-            (24, ActionType.GeneralAction) => CharacterConfig.FlyingMountRouletteGroup,
-            _ => null,
+            (NORMAL_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (CharacterConfig.MountRouletteGroup, true),
+            (FLYING_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (CharacterConfig.FlyingMountRouletteGroup, true),
+            _ => (null, false),
         };
 
-        bool isRouletteActionID = actionID is 9 or 24;
         ActionType oldActionType = actionType;
         uint oldActionId = actionID;
         if (groupName is not null)
@@ -86,22 +87,20 @@ internal sealed class ActionHandler : IDisposable
             isRouletteActionID = true;
         }
 
-        switch (oldActionType)
+        if (oldActionType == ActionType.GeneralAction)
         {
-            case ActionType.GeneralAction when isRouletteActionID && actionType != oldActionType:
-                _castBarHelper.Show = false;
-                _castBarHelper.IsFlyingRoulette = oldActionId == 24;
-                _castBarHelper.MountID = actionID;
-                break;
-            case ActionType.Mount:
-                _castBarHelper.Show = true;
-                _castBarHelper.MountID = actionID;
-                break;
+            switch (oldActionId)
+            {
+                case FLYING_ROULETTE_ACTION_ID when actionType != oldActionType:
+                    _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.FlyingRoulette;
+                    break;
+                case NORMAL_ROULETTE_ACTION_ID when actionType != oldActionType:
+                    _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.NormalRoulette;
+                    break;
+            }
         }
 
-        byte result = _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
-
-        return result;
+        return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
     }
 
     public CharacterConfig? CharacterConfig { get; set; }
@@ -150,7 +149,6 @@ internal sealed class ActionHandler : IDisposable
             }
 
             _useActionHook?.Dispose();
-            _castBarHelper.Dispose();
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null
