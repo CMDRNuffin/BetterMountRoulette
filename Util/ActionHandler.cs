@@ -123,8 +123,18 @@ internal sealed class ActionHandler : IDisposable
         MountGroup? mountGroup = characterConfig.GetMountGroup(arguments);
         if (mountGroup == null)
         {
-            _services.Chat.PrintError($"Mount group \"{arguments}\" not found.");
-            return;
+            // handle quotes because not doing that in the first place was a dumb decision
+            if (arguments.StartsWith('"') && arguments.EndsWith('"'))
+            {
+                arguments = arguments[1..^1];
+            }
+
+            mountGroup = characterConfig.GetMountGroup(arguments);
+            if (mountGroup == null)
+            {
+                _services.Chat.PrintError($"Mount group \"{arguments}\" not found.");
+                return;
+            }
         }
 
         uint mount = _mountRegistry.GetRandom(ActionManager.Instance(), mountGroup);
