@@ -20,6 +20,8 @@ internal sealed class MountGroup
 
     public bool ForceSingleSeatersWhileSolo { get; set; }
 
+    public RouletteDisplayType DisplayType { get; set; }
+
     public FastMode FastMode { get; set; }
 }
 
@@ -28,4 +30,11 @@ public enum FastMode
     Off = 0,
     IfGrounded = 1,
     On = 2,
+}
+
+public enum RouletteDisplayType
+{
+    Grounded,
+    Flying,
+    Show,
 }

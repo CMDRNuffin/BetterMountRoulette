@@ -18,7 +18,7 @@ internal sealed class ActionHandler : IDisposable
     private readonly MountRegistry _mountRegistry;
     private readonly Hook<UseActionHandler>? _useActionHook;
     private readonly GameFunctions _gameFunctions;
-    private (bool hide, uint actionID) _hideAction;
+    private RouletteDisplayType? _displayTypeOverride;
     private bool _disposedValue;
 
     public unsafe ActionHandler(
@@ -43,8 +43,8 @@ internal sealed class ActionHandler : IDisposable
 
     private unsafe byte OnUseAction(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID, uint a4, uint a5, uint a6, void* a7)
     {
-        (bool hide, uint hideActionID) = _hideAction;
-        _hideAction = (false, 0);
+        RouletteDisplayType? displayTypeOverride = _displayTypeOverride;
+        _displayTypeOverride = null;
 
         if (_services.Condition[ConditionFlag.Mounted]
             || _services.Condition[ConditionFlag.Mounted2]
@@ -79,14 +79,21 @@ internal sealed class ActionHandler : IDisposable
             }
         }
 
-        if (hide)
+        if (displayTypeOverride is { } displayType)
         {
-            oldActionId = hideActionID;
-            oldActionType = ActionType.GeneralAction;
-            isRouletteActionID = true;
+            switch (displayType)
+            {
+                case RouletteDisplayType.Grounded:
+                    _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.NormalRoulette;
+                    break;
+                case RouletteDisplayType.Flying:
+                    _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.FlyingRoulette;
+                    break;
+                case RouletteDisplayType.Show:
+                    break;
+            }
         }
-
-        if (oldActionType == ActionType.GeneralAction)
+        else if (oldActionType == ActionType.GeneralAction)
         {
             switch (oldActionId)
             {
@@ -143,7 +150,7 @@ internal sealed class ActionHandler : IDisposable
         uint mount = _mountRegistry.GetRandom(ActionManager.Instance(), mountGroup);
         if (mount is not 0)
         {
-            _hideAction = (true, actionID: 9);
+            _displayTypeOverride = mountGroup.DisplayType;
             _ = ActionManager.Instance()->UseAction(ActionType.Mount, mount);
         }
         else

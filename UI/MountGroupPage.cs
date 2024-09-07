@@ -147,6 +147,7 @@ internal sealed class MountGroupPage
         bool forceSingleSeatersWhileSolo = group.ForceSingleSeatersWhileSolo;
         bool fastMode = group.FastMode != FastMode.Off;
         bool fastModeAlways = group.FastMode == FastMode.On;
+        RouletteDisplayType displayType = group.DisplayType;
 
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
 
@@ -182,10 +183,47 @@ internal sealed class MountGroupPage
 
         ControlHelper.Tooltip("Limits mount selection regardless of flying unlock status.");
 
+        ImGui.AlignTextToFramePadding();
+        ImGui.Text("/pmount Behavior:");
+        ImGui.SameLine();
+        SelectDisplayType(ref displayType);
+
+        group.DisplayType = displayType;
         group.ForceMultiseatersInParty = forceMultiseatersInParty;
         group.PreferMoreSeats = preferMoreSeats;
         group.ForceSingleSeatersWhileSolo = forceSingleSeatersWhileSolo;
         group.FastMode = fastModeAlways ? FastMode.On : fastMode ? FastMode.IfGrounded : FastMode.Off;
+    }
+
+    private static void SelectDisplayType(ref RouletteDisplayType displayType)
+    {
+        if (ImGui.BeginCombo("##displayType", DisplayTypeValue(displayType)))
+        {
+            ComboItem(RouletteDisplayType.Grounded, ref displayType);
+            ComboItem(RouletteDisplayType.Flying, ref displayType);
+            ComboItem(RouletteDisplayType.Show, ref displayType);
+
+            ImGui.EndCombo();
+        }
+
+        static void ComboItem(RouletteDisplayType value, ref RouletteDisplayType selectedValue)
+        {
+            if (ImGui.Selectable(DisplayTypeValue(value), value == selectedValue))
+            {
+                selectedValue = value;
+            }
+        }
+
+        static string DisplayTypeValue(RouletteDisplayType displayType)
+        {
+            return displayType switch
+            {
+                RouletteDisplayType.Grounded => "Show as Mount Roulette",
+                RouletteDisplayType.Flying => "Show as Flying Mount Roulette",
+                RouletteDisplayType.Show => "Reveal mount during cast",
+                _ => displayType.ToString()
+            };
+        }
     }
 
     private static void UpdateMountSelectionData(MountGroup group, List<MountData> unlockedMounts, bool enableNewMounts)
