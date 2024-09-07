@@ -48,8 +48,7 @@ internal sealed class ActionHandler : IDisposable
 
         if (_services.Condition[ConditionFlag.Mounted]
             || _services.Condition[ConditionFlag.Mounted2]
-            || CharacterConfig is not { } characterConfig
-            || (characterConfig.MountRouletteGroup is null && characterConfig.FlyingMountRouletteGroup is null))
+            || CharacterConfig is not { } characterConfig)
         {
             return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
         }
@@ -91,6 +90,10 @@ internal sealed class ActionHandler : IDisposable
         {
             switch (oldActionId)
             {
+                case FLYING_ROULETTE_ACTION_ID when CharacterConfig.RevealMountsFlying:
+                case NORMAL_ROULETTE_ACTION_ID when CharacterConfig.RevealMountsNormal:
+                    _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.PlainMount;
+                    break;
                 case FLYING_ROULETTE_ACTION_ID when actionType != oldActionType:
                     _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.FlyingRoulette;
                     break;

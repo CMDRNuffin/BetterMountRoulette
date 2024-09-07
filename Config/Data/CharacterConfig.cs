@@ -18,6 +18,10 @@ internal sealed class CharacterConfig
 
     public string? MountRouletteGroup { get; set; }
 
+    public bool RevealMountsNormal { get; set; }
+
+    public bool RevealMountsFlying { get; set; }
+
     public string? FlyingMountRouletteGroup { get; set; }
 
     [JsonIgnore]
