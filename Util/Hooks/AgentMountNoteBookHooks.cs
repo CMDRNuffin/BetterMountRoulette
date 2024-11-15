@@ -60,36 +60,25 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
     private unsafe uint OnGetRouletteActionId(AgentInterface* @this, uint rouletteIndex)
     {
         _services.PluginLog.Debug($"OnGetRouletteActionId(this, {rouletteIndex})");
-        if (rouletteIndex == 1)
-        {
-            return 24;
-        }
-
-        return _agentMountNoteBookGetRouletteActionIdHook.Original(@this, rouletteIndex);
+        return rouletteIndex == 1
+            ? 24
+            : _agentMountNoteBookGetRouletteActionIdHook.Original(@this, rouletteIndex);
     }
 
     private unsafe uint OnGetRouletteIcon(AgentInterface* @this, uint rouletteIndex)
     {
         _services.PluginLog.Debug($"OnGetRouletteIcon(this, {rouletteIndex})");
-        if (rouletteIndex == 1)
-        {
-            return 122;
-        }
-
-        return _agentMountNoteBookGetRouletteIconHook.Original(@this, rouletteIndex);
+        return rouletteIndex == 1
+            ? 122
+            : _agentMountNoteBookGetRouletteIconHook.Original(@this, rouletteIndex);
     }
 
     private unsafe bool OnUseRoulette(AgentInterface* @this, uint rouletteIndex)
     {
         _services.PluginLog.Debug($"OnUseRoulette(this, {rouletteIndex})");
-        if (rouletteIndex == 1)
-        {
-            return ActionManager.Instance()->UseAction(ActionType.GeneralAction, 24);
-        }
-        else
-        {
-            return _agentMountNoteBookUseRouletteHook.Original(@this, rouletteIndex);
-        }
+        return rouletteIndex == 1
+            ? ActionManager.Instance()->UseAction(ActionType.GeneralAction, 24)
+            : _agentMountNoteBookUseRouletteHook.Original(@this, rouletteIndex);
     }
 
     private void Dispose(bool disposing)

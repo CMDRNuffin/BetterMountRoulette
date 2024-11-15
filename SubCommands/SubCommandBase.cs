@@ -38,12 +38,9 @@ internal abstract class SubCommandBase : ISubCommand
             return true;
         }
 
-        if (parameter.Length >= 1 && SubCommands.TryGetValue(parameter[0], out ISubCommand? subCommand))
-        {
-            return subCommand.Execute(parameter[1..]);
-        }
-
-        return ExecuteInternal(parameter);
+        return parameter.Length >= 1 && SubCommands.TryGetValue(parameter[0], out ISubCommand? subCommand)
+            ? subCommand.Execute(parameter[1..])
+            : ExecuteInternal(parameter);
     }
 
     protected void PrintHelp()
