@@ -3,29 +3,23 @@
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.Interop;
 
-using Lumina.Text;
+using Lumina.Text.ReadOnly;
 
-internal sealed class MountData
+internal sealed class MountData(TextureHelper textureHelper, ReadOnlySeString name)
 {
-    private readonly TextureHelper _textureHelper;
+    private readonly TextureHelper _textureHelper = textureHelper;
 
     public uint ID { get; init; }
 
     public uint IconID { get; init; }
 
-    public SeString Name { get; }
+    public ReadOnlySeString Name { get; } = name;
 
     public bool Unlocked { get; set; }
 
     public int ExtraSeats { get; set; }
 
     public bool IsFast { get; set; }
-
-    public MountData(TextureHelper textureHelper, SeString name)
-    {
-        _textureHelper = textureHelper;
-        Name = name;
-    }
 
     public nint GetIcon()
     {

@@ -19,10 +19,10 @@ internal sealed class Configuration : IPluginConfiguration
     public bool Enabled { get; set; }
 
     [Versions(introduced: 0, removed: 3)]
-    public HashSet<uint> EnabledMounts { get; set; } = new();
+    public HashSet<uint> EnabledMounts { get; set; } = [];
 
     [Versions(introduced: 3)]
-    public Dictionary<ulong, CharacterConfigEntry> CharacterConfigs { get; set; } = new();
+    public Dictionary<ulong, CharacterConfigEntry> CharacterConfigs { get; set; } = [];
 
     [Versions(introduced: 3)]
     public int? NewCharacterHandling { get; set; }
@@ -37,7 +37,7 @@ internal sealed class Configuration : IPluginConfiguration
     public bool IncludeNewMounts { get; set; } = true;
 
     [Versions(introduced: 2, removed: 3)]
-    public List<MountGroup> Groups { get; set; } = new();
+    public List<MountGroup> Groups { get; set; } = [];
 
     [Versions(introduced: 2, removed: 3)]
     public string? MountRouletteGroup { get; set; }

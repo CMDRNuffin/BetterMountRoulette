@@ -3,6 +3,7 @@
 using BetterMountRoulette.Config;
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
+
 using ImGuiNET;
 
 using System.Collections.Generic;
@@ -13,25 +14,17 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 
-internal sealed class CharacterManagementRenderer
+internal sealed class CharacterManagementRenderer(
+    Services services,
+    WindowManager windowManager,
+    CharacterManager characterManager,
+    Configuration configuration)
 {
-    private readonly Services _services;
-    private readonly WindowManager _windowManager;
-    private readonly CharacterManager _characterManager;
-    private readonly Configuration _configuration;
+    private readonly Services _services = services;
+    private readonly WindowManager _windowManager = windowManager;
+    private readonly CharacterManager _characterManager = characterManager;
+    private readonly Configuration _configuration = configuration;
     private ulong? _currentCharacter;
-
-    public CharacterManagementRenderer(
-        Services services,
-        WindowManager windowManager,
-        CharacterManager characterManager,
-        Configuration configuration)
-    {
-        _services = services;
-        _windowManager = windowManager;
-        _characterManager = characterManager;
-        _configuration = configuration;
-    }
 
     public void Draw()
     {

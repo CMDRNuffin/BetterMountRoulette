@@ -3,6 +3,7 @@
 using BetterMountRoulette.Config;
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
+
 using ImGuiNET;
 
 using System;
@@ -99,6 +100,13 @@ internal sealed class MountGroupPage
                 _mode = MountGroupPageEnum.Mounts;
                 break;
             case MountGroupPageEnum.Mounts when isSettingsOpen:
+                _mode = MountGroupPageEnum.Settings;
+                break;
+            case MountGroupPageEnum.Settings:
+            case MountGroupPageEnum.Mounts:
+                break;
+            default:
+                // Something somewhere went horribly wrong. Reset to settings.
                 _mode = MountGroupPageEnum.Settings;
                 break;
         }

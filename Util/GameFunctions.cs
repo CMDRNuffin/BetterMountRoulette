@@ -1,23 +1,27 @@
 ﻿namespace BetterMountRoulette.Util;
 
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using BetterMountRoulette.Util.Hooks;
 
 using System;
-using Lumina.Excel.GeneratedSheets2;
-using Lumina.Excel;
 using System.Collections.Generic;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Iced.Intel;
-using Dalamud.Hooking;
-using FFXIVClientStructs.FFXIV.Component.Exd;
 
-using CSExcelRow = FFXIVClientStructs.FFXIV.Component.Excel.ExcelRow;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
-using Dalamud.Utility.Signatures;
-using BetterMountRoulette.Util.Hooks;
+using Lumina.Excel.Sheets;
+using Lumina.Excel;
+
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Component.Exd;
+
+using Iced.Intel;
+
+using Dalamud.Hooking;
+using Dalamud.Utility.Signatures;
+
+using CSExcelRow = FFXIVClientStructs.FFXIV.Component.Excel.ExcelRow;
 
 public enum MountRouletteOverride
 {
@@ -29,14 +33,14 @@ public enum MountRouletteOverride
 internal sealed class GameFunctions : IDisposable
 {
     private readonly Services _services;
-    private readonly Dictionary<ushort, uint[]?> _maxSpeedUnlockCache = new();
+    private readonly Dictionary<ushort, uint[]?> _maxSpeedUnlockCache = [];
 
     private bool _disposedValue;
 
     private readonly Hook<ExdModule.Delegates.GetRowBySheetIndexAndRowIndex> _exdModuleGetRowBySheetIndexAndRowIndexHook;
 
     [Signature("E8 ?? ?? ?? ?? 0F B6 54 24 40 49 8B CD", Fallibility = Fallibility.Infallible)]
-    private readonly unsafe delegate *unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
+    private readonly unsafe delegate* unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
 
     [Signature("E8 ?? ?? ?? ?? 41 83 FF 04 0F 84 ?? ?? ?? ??", Fallibility = Fallibility.Infallible)]
     private readonly Hook<ActionManagerInitializeCastBarDetour> _actionManagerInitializeCastbarHook;
@@ -74,37 +78,28 @@ internal sealed class GameFunctions : IDisposable
 
     public unsafe bool IsFlightUnlocked()
     {
-        ExcelSheet<TerritoryType>? territory = _services.DataManager.GetExcelSheet<TerritoryType>();
-        TerritoryType? currentTerritory = territory?.GetRow(_services.ClientState.TerritoryType);
-        if (currentTerritory is not null)
-        {
-            if (currentTerritory.Unknown4 > 0)
-            {
-                return PlayerState.Instance()->IsAetherCurrentZoneComplete(currentTerritory.Unknown4);
-            }
-        }
-
-        return false;
+        ExcelSheet<TerritoryType> territory = _services.DataManager.GetExcelSheet<TerritoryType>();
+        TerritoryType currentTerritory = territory.GetRow(_services.ClientState.TerritoryType);
+        return currentTerritory.Unknown4 > 0
+            && PlayerState.Instance()->IsAetherCurrentZoneComplete(currentTerritory.Unknown4);
     }
 
     public unsafe (byte MaxSpeed, byte CurrentSpeed) GetCurrentTerritoryMountSpeedInfo()
     {
-        uint[]? maxSpeedUnlockIds;
-        if(!_maxSpeedUnlockCache.TryGetValue(_services.ClientState.TerritoryType, out maxSpeedUnlockIds))
+        if (!_maxSpeedUnlockCache.TryGetValue(_services.ClientState.TerritoryType, out uint[]? maxSpeedUnlockIds))
         {
-            TerritoryType? territoryType = _services.DataManager.GetExcelSheet<TerritoryType>()
-                ?.GetRow(_services.ClientState.TerritoryType);
-            if (territoryType != null)
+            TerritoryType territoryType = _services.DataManager.GetExcelSheet<TerritoryType>().GetRow(_services.ClientState.TerritoryType);
+            if (territoryType.MountSpeed.IsValid)
             {
-                if (territoryType.MountSpeed.Row > 0 && territoryType.MountSpeed.Value is { } mountSpeed)
+                MountSpeed mountSpeed = territoryType.MountSpeed.Value;
+#pragma warning disable IDE0072 // Add missing cases // exhaustive, adding a default case would be an error
+                maxSpeedUnlockIds = (mountSpeed.Quest.RowId, mountSpeed.Unknown0) switch
                 {
-                    maxSpeedUnlockIds = (mountSpeed.Quest.Row, mountSpeed.Unknown0) switch
-                    {
-                        (0, _) => null,
-                        (uint i, 0) => [i],
-                        (uint i, uint j) => [i, j]
-                    };
-                }
+                    (0, _) => null,
+                    (uint i, 0) => [i],
+                    (uint i, uint j) => [i, j]
+                };
+#pragma warning restore IDE0072 // Add missing cases
             }
 
             _maxSpeedUnlockCache[_services.ClientState.TerritoryType] = maxSpeedUnlockIds;
@@ -241,16 +236,11 @@ internal sealed class GameFunctions : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private sealed unsafe class UnsafeCodeReader : CodeReader
+    private sealed unsafe class UnsafeCodeReader(byte* address) : CodeReader
     {
         private bool _hasEncounteredCC;
-        private readonly byte* _address;
+        private readonly byte* _address = address;
         private int _pos;
-
-        public UnsafeCodeReader(byte* address)
-        {
-            _address = address;
-        }
 
         public bool CanReadByte => !_hasEncounteredCC;
 
@@ -271,7 +261,7 @@ internal sealed class GameFunctions : IDisposable
         }
     }
 
-    private unsafe readonly ref struct FlyingMountRoulette(CSExcelRow* sheet)
+    private readonly unsafe ref struct FlyingMountRoulette(CSExcelRow* sheet)
     {
         private readonly CSExcelRow* _sheet = sheet;
 

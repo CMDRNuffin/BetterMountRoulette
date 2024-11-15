@@ -148,7 +148,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     {
         // todo: correctly handle arguments, including
         // [/foo "bar"] being equal to [/foo bar] and the like
-        string[] parts = string.IsNullOrEmpty(arguments) ? Array.Empty<string>() : arguments.Split(' ');
+        string[] parts = string.IsNullOrEmpty(arguments) ? [] : arguments.Split(' ');
         try
         {
             bool success = _command.Execute(parts);

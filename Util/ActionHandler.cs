@@ -5,6 +5,7 @@ using BetterMountRoulette.UI;
 
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Hooking;
+
 using FFXIVClientStructs.FFXIV.Client.Game;
 
 using System;
@@ -90,6 +91,8 @@ internal sealed class ActionHandler : IDisposable
                     _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.FlyingRoulette;
                     break;
                 case RouletteDisplayType.Show:
+                default:
+                    // no-op
                     break;
             }
         }
@@ -106,6 +109,9 @@ internal sealed class ActionHandler : IDisposable
                     break;
                 case NORMAL_ROULETTE_ACTION_ID when actionType != oldActionType:
                     _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.NormalRoulette;
+                    break;
+                default:
+                    // no-op
                     break;
             }
         }

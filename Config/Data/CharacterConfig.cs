@@ -14,7 +14,7 @@ internal sealed class CharacterConfig
 
     public bool IncludeNewMounts { get; set; } = true;
 
-    public List<MountGroup> Groups { get; set; } = new();
+    public List<MountGroup> Groups { get; set; } = [];
 
     public string? MountRouletteGroup { get; set; }
 

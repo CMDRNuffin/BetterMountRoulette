@@ -30,7 +30,7 @@ internal static class ControlHelper
         if (ImGui.IsItemHovered(flags))
         {
             ImGui.BeginTooltip();
-            foreach(string line in lines)
+            foreach (string line in lines)
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {

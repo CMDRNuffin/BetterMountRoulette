@@ -12,20 +12,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-internal sealed class CharacterManager
+internal sealed class CharacterManager(Services services, Configuration configuration)
 {
-    private readonly Services _services;
-    private readonly Configuration _configuration;
+    private readonly Services _services = services;
+    private readonly Configuration _configuration = configuration;
     private CharacterConfig? _characterConfig;
     private ulong? _playerID;
 
     private IPluginLog PluginLog => _services.PluginLog;
-
-    public CharacterManager(Services services, Configuration configuration)
-    {
-        _services = services;
-        _configuration = configuration;
-    }
 
     public CharacterConfig GetCharacterConfig(ulong playerID, IPlayerCharacter character)
     {
@@ -40,13 +34,13 @@ internal sealed class CharacterManager
             _characterConfig = LoadCharacterConfig(cce);
         }
 
-        if(_characterConfig is null)
+        if (_characterConfig is null)
         {
             _characterConfig = CreateCharacterConfig();
             cce = new CharacterConfigEntry
             {
                 CharacterName = character.Name.TextValue,
-                CharacterWorld = character.HomeWorld.GameData?.Name ?? "",
+                CharacterWorld = character.HomeWorld.Value.Name.ExtractText() ?? "",
             };
 
             cce.FileName = $"{playerID}_{cce.CharacterName.Replace(' ', '_')}@{cce.CharacterWorld}.json";
@@ -72,7 +66,7 @@ internal sealed class CharacterManager
         CharacterConfig? characterConfig = LoadCharacterConfig(fromPlayerID);
         if (characterConfig is null || _characterConfig is null)
         {
-            List<string> items = new();
+            List<string> items = [];
             if (characterConfig is null)
             {
                 items.Add("imported config is null");
@@ -111,7 +105,7 @@ internal sealed class CharacterManager
     private void SaveCharacterConfig(CharacterConfigEntry entry, CharacterConfig config)
     {
         string dir = GetCharConfigDir();
-        if(!Directory.Exists(dir))
+        if (!Directory.Exists(dir))
         {
             _ = Directory.CreateDirectory(dir);
         }
@@ -126,10 +120,8 @@ internal sealed class CharacterManager
             CharacterConfig? res = playerID == Configuration.DUMMY_LEGACY_CONFIG_ID
                 ? LoadLegacyCharacterConfig()
                 : LoadCharacterConfig(cce);
-            if (res is not null)
-            {
-                return res;
-            }
+
+            return res;
         }
 
         return null;
@@ -224,13 +216,13 @@ internal sealed class CharacterManager
     {
         return new() /* todo: defaults */
         {
-            Groups = new()
-            {
+            Groups =
+            [
                 new()
                 {
                     Name = Configuration.DEFAULT_GROUP_NAME,
                 }
-            },
+            ],
             IsNew = true,
         };
     }

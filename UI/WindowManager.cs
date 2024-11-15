@@ -9,18 +9,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-internal sealed class WindowManager
+internal sealed class WindowManager(BetterMountRoulettePlugin plugin, Services services)
 {
-    private readonly BetterMountRoulettePlugin _plugin;
-    private readonly Services _services;
+    private readonly BetterMountRoulettePlugin _plugin = plugin;
+    private readonly Services _services = services;
     private readonly WindowStack _windows = new();
-    private readonly List<IWindow> _removeList = new();
-
-    public WindowManager(BetterMountRoulettePlugin plugin, Services services)
-    {
-        _plugin = plugin;
-        _services = services;
-    }
+    private readonly List<IWindow> _removeList = [];
 
     public void Draw()
     {
@@ -106,7 +100,7 @@ internal sealed class WindowManager
 
     private sealed class WindowStack
     {
-        private readonly List<(List<IWindow> Windows, bool IsDialog)> _windows = new();
+        private readonly List<(List<IWindow> Windows, bool IsDialog)> _windows = [];
 
         public bool Contains(IWindow window)
         {

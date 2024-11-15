@@ -2,20 +2,14 @@
 
 using ImGuiNET;
 
-internal sealed class ConfirmImportCharacterDialog : IWindow
+internal sealed class ConfirmImportCharacterDialog(WindowManager windowManager, ConfirmImportCharacterDialog.ImportHandler importHandler) : IWindow
 {
-    private readonly WindowManager _windowManager;
-    private readonly ImportHandler _importHandler;
+    private readonly WindowManager _windowManager = windowManager;
+    private readonly ImportHandler _importHandler = importHandler;
 
     private bool _skipAsking;
 
     public delegate void ImportHandler(bool import, bool rememberAnswer);
-
-    public ConfirmImportCharacterDialog(WindowManager windowManager, ImportHandler importHandler)
-    {
-        _windowManager = windowManager;
-        _importHandler = importHandler;
-    }
 
     public void Draw()
     {

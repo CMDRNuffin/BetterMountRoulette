@@ -9,7 +9,7 @@ internal sealed class MountGroup
     public string Name { get; set; } = "";
 
     [JsonProperty("EnabledMounts")]
-    public HashSet<uint> IncludedMounts { get; set; } = new();
+    public HashSet<uint> IncludedMounts { get; set; } = [];
 
     [JsonProperty("IncludeNewMounts")]
     public bool IncludedMeansActive { get; set; }

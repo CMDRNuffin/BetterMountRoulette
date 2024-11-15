@@ -10,18 +10,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-internal sealed class MountRenderer
+internal sealed class MountRenderer(Services services)
 {
     private const int PAGE_SIZE = COLUMNS * ROWS;
     private const int COLUMNS = 5;
     private const int ROWS = 6;
 
-    private readonly Services _services;
-
-    public MountRenderer(Services services)
-    {
-        _services = services;
-    }
+    private readonly Services _services = services;
 
     public void RenderPage(List<MountData> mounts, MountGroup group, int page)
     {
@@ -40,14 +35,9 @@ internal sealed class MountRenderer
 
             bool enabled = group.IncludedMounts.Contains(mount.ID) == group.IncludedMeansActive;
             enabled = Render(mount, enabled);
-            if (enabled == group.IncludedMeansActive)
-            {
-                _ = group.IncludedMounts.Add(mount.ID);
-            }
-            else
-            {
-                _ = group.IncludedMounts.Remove(mount.ID);
-            }
+            _ = enabled == group.IncludedMeansActive
+                ? group.IncludedMounts.Add(mount.ID)
+                : group.IncludedMounts.Remove(mount.ID);
         }
     }
 
@@ -105,7 +95,7 @@ internal sealed class MountRenderer
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip(mountData.Name.RawString);
+            ImGui.SetTooltip(mountData.Name.ExtractText());
         }
 
         Vector2 finalPos = ImGui.GetCursorPos();

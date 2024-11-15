@@ -2,20 +2,12 @@
 
 using ImGuiNET;
 
-internal sealed class DialogPrompt : IWindow
+internal sealed class DialogPrompt(WindowManager manager, string title, string text, WindowManager.ButtonConfig[] buttons) : IWindow
 {
-    private readonly WindowManager _manager;
-    private readonly string _title;
-    private readonly string _text;
-    private readonly WindowManager.ButtonConfig[] _buttons;
-
-    public DialogPrompt(WindowManager manager, string title, string text, WindowManager.ButtonConfig[] buttons)
-    {
-        _manager = manager;
-        _title = title;
-        _text = text;
-        _buttons = buttons;
-    }
+    private readonly WindowManager _manager = manager;
+    private readonly string _title = title;
+    private readonly string _text = text;
+    private readonly WindowManager.ButtonConfig[] _buttons = buttons;
 
     public void Draw()
     {

@@ -6,7 +6,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.Group;
 using FFXIVClientStructs.Interop;
 
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 
 using System;
 using System.Collections.Generic;
@@ -17,21 +17,16 @@ using System.Linq;
 /// Responsible for maintaining a list of mounts with ID, name, icon, and whether or not the mount is unlocked.
 /// </summary>
 [SuppressMessage("Performance", "CA1812", Justification = "Instantiated via reflection")]
-internal sealed class MountRegistry
+internal sealed class MountRegistry(Services services)
 {
-    private readonly Services _services;
-    private readonly Dictionary<uint, MountData> _mountsByID = new();
-    private readonly List<MountData> _mounts = new();
+    private readonly Services _services = services;
+    private readonly Dictionary<uint, MountData> _mountsByID = [];
+    private readonly List<MountData> _mounts = [];
     private bool _isInitialized;
     private readonly object _lock = new();
     private string[]? _fastMountNames;
 
     public int UnlockedMountCount { get; private set; }
-
-    public MountRegistry(Services services)
-    {
-        _services = services;
-    }
 
     private void InitializeIfNecessary()
     {
@@ -141,7 +136,11 @@ internal sealed class MountRegistry
                 }
 
                 break;
+            case FastMode.IfGrounded:
+            // but flight is unlocked, so no-op
+            case FastMode.Off:
             default:
+                // no-op
                 break;
         }
 
@@ -193,6 +192,6 @@ internal sealed class MountRegistry
 
     internal IEnumerable<string> GetFastMountNames()
     {
-        return _fastMountNames ??= _mounts.Where(x => x.IsFast).Select(x => x.Name.RawString).ToArray();
+        return _fastMountNames ??= _mounts.Where(x => x.IsFast).Select(x => x.Name.ExtractText()).ToArray();
     }
 }

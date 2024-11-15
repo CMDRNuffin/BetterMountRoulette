@@ -2,9 +2,10 @@
 
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
+
 using ImGuiNET;
 
-using Lumina.Excel.GeneratedSheets2;
+using Lumina.Excel.Sheets;
 
 using System;
 using System.Linq;
