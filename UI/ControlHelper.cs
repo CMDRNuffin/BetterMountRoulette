@@ -1,5 +1,7 @@
 ﻿namespace BetterMountRoulette.UI;
 
+using Dalamud.Interface.Utility;
+
 using ImGuiNET;
 
 using System;
@@ -69,7 +71,7 @@ internal static class ControlHelper
     {
         if (width is float w)
         {
-            ImGui.SetNextItemWidth(w);
+            ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * w);
         }
 
         if (ImGui.BeginCombo(label, selectedName))

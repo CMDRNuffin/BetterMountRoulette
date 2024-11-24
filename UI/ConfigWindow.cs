@@ -115,16 +115,24 @@ internal sealed class ConfigWindow : IWindow
 
     private void RouletteGroup(CharacterConfig characterConfig, ref string? groupName, ref bool show, bool isFlying = false)
     {
-        if (ImGui.BeginChildFrame(isFlying ? 2u : 1u, new Vector2(0, 60)))
+        ImGuiStylePtr style = ImGui.GetStyle();
+
+        const int ROWS = 2;
+        float spacing = style.ItemSpacing.Y * (ROWS - 1);
+        float checkboxHeight = ImGui.GetFrameHeight();
+        float contentHeight = spacing + (checkboxHeight * ROWS);
+        float totalHeight = contentHeight + (style.FramePadding.Y * 2) + style.ItemSpacing.Y;
+
+        if (ImGui.BeginChildFrame(isFlying ? 2u : 1u, new Vector2(0, totalHeight)))
         {
             if (ImGui.BeginTable($"##roulettegroup_{(isFlying ? "f" : "g")}", 2))
             {
-                ImGui.TableSetupColumn("##icon", ImGuiTableColumnFlags.WidthFixed, 50);
+                ImGui.TableSetupColumn("##icon", ImGuiTableColumnFlags.WidthFixed, contentHeight);
                 ImGui.TableSetupColumn("##settings", ImGuiTableColumnFlags.WidthStretch);
 
                 _ = ImGui.TableNextColumn();
 
-                ImGui.Image(_services.TextureHelper.LoadIconTexture(isFlying ? 122u : 118u), new Vector2(50));
+                ImGui.Image(_services.TextureHelper.LoadIconTexture(isFlying ? 122u : 118u), new Vector2(contentHeight));
 
                 _ = ImGui.TableNextColumn();
 
@@ -196,7 +204,8 @@ internal sealed class ConfigWindow : IWindow
                 config.Groups,
                 x => x.Name,
                 ref group,
-                $"##roulettegroup_{(isFlying ? "f" : "g")}", 100);
+                $"##roulettegroup_{(isFlying ? "f" : "g")}",
+                100);
         }
     }
 }
