@@ -33,7 +33,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         private set => _actionHandler.CharacterConfig = value;
     }
 
-    private readonly Services _services;
+    private readonly PluginServices _services;
     private readonly ActionHandler _actionHandler;
     internal readonly WindowManager WindowManager;
     internal readonly TextureHelper TextureHelper;
@@ -45,7 +45,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     {
         ArgumentNullException.ThrowIfNull(pluginInterface);
 
-        _services = new Services(pluginInterface);
+        _services = new PluginServices(pluginInterface);
         TextureHelper = new TextureHelper(_services);
         MountRegistry = new MountRegistry(_services);
 
@@ -63,10 +63,13 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             CharacterManager = new CharacterManager(_services, config);
 
             _services.Login += OnLogin;
-            if (_services.ClientState.LocalPlayer is not null)
+            _ = _services.Framework.RunOnTick(() =>
             {
-                OnLogin(this, EventArgs.Empty);
-            }
+                if (_services.ClientState.LocalPlayer is not null)
+                {
+                    OnLogin(this, EventArgs.Empty);
+                }
+            });
 
             _command = InitCommands();
 
@@ -100,7 +103,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 return;
             case Configuration.NewCharacterHandlingModes.ASK:
             default: /* default to "ask" for invalid values */
-                WindowManager.OpenDialog(new ConfirmImportCharacterDialog(WindowManager, ConfirmAction));
+                WindowManager.OpenDialog(new ConfirmImportCharacterDialog(ConfirmAction));
                 break;
         }
 
@@ -131,6 +134,8 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 ImportCharacterConfig();
                 CharacterConfig.IsNew = false;
             }
+
+            _services.GameFunctions.ToggleFlyingRouletteButton(CharacterConfig.EnableFlyingRouletteButton);
         }
     }
 
@@ -155,10 +160,14 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             if (!success)
             {
-                _services.Chat.PrintError($"Invalid command: {command} {arguments}");
+                _services.PluginLog.Error($"Invalid command: {command} {arguments}");
+                if (!(CharacterConfig?.SuppressChatErrors ?? false))
+                {
+                    _services.Chat.PrintError($"Invalid command: {command} {arguments}");
+                }
             }
         }
-        catch (Exception e)
+        catch (Exception e) when (!(CharacterConfig?.SuppressChatErrors ?? false))
         {
             _services.Chat.PrintError(e.Message);
             throw;

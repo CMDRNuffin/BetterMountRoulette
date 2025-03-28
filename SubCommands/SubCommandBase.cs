@@ -19,7 +19,7 @@ internal abstract class SubCommandBase : ISubCommand
 
     public BetterMountRoulettePlugin Plugin { get; set; } = null!;
 
-    public Services Services { get; set; } = null!;
+    public PluginServices Services { get; set; } = null!;
 
     protected Dictionary<string, ISubCommand> SubCommands { get; } = new(StringComparer.InvariantCultureIgnoreCase);
 

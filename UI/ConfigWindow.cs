@@ -3,6 +3,8 @@
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
+using Dalamud.Interface.Windowing;
+
 using ImGuiNET;
 
 using Lumina.Excel.Sheets;
@@ -11,18 +13,17 @@ using System;
 using System.Linq;
 using System.Numerics;
 
-internal sealed class ConfigWindow : IWindow
+internal sealed class ConfigWindow : Window
 {
-    private bool _isOpen;
     private readonly BetterMountRoulettePlugin _plugin;
-    private readonly Services _services;
+    private readonly PluginServices _services;
     private readonly MountGroupPage _mountGroupPage;
     private readonly CharacterManagementRenderer _charManagementRenderer;
     private float _windowMinWidth;
 
     private static string[]? _mainCommands;
 
-    public ConfigWindow(BetterMountRoulettePlugin plugin, Services services)
+    public ConfigWindow(BetterMountRoulettePlugin plugin, PluginServices services) : base("Better Mount Roulette", ImGuiWindowFlags.AlwaysAutoResize)
     {
         _plugin = plugin;
         _services = services;
@@ -44,51 +45,52 @@ internal sealed class ConfigWindow : IWindow
         return obj is ConfigWindow;
     }
 
-    public void Open()
+    public override void OnOpen()
     {
-        _isOpen = true;
+        base.OnOpen();
         _plugin.MountRegistry.RefreshUnlocked();
     }
 
-    public void Draw()
+    public override void PreDraw()
     {
+        base.PreDraw();
         ImGui.SetNextWindowSizeConstraints(new Vector2(_windowMinWidth, 0), new Vector2(float.MaxValue, float.MaxValue));
-        if (ImGui.Begin("Better Mount Roulette", ref _isOpen, ImGuiWindowFlags.AlwaysAutoResize))
+    }
+
+    public override void Draw()
+    {
+        if (_plugin.CharacterConfig is not CharacterConfig characterConfig)
         {
-            if (_plugin.CharacterConfig is not CharacterConfig characterConfig)
-            {
-                ImGui.Text("Please log in first");
-            }
-            else if (ImGui.BeginTabBar("settings"))
-            {
-                Tab("General", GeneralConfigTab);
-                Tab("Mount Groups", _mountGroupPage.RenderPage);
-                Tab("Character Management", x => _charManagementRenderer.Draw());
+            ImGui.Text("Please log in first");
+        }
+        else if (ImGui.BeginTabBar("settings"))
+        {
+            Tab("General", GeneralConfigTab);
+            Tab("Mount Groups", _mountGroupPage.RenderPage);
+            Tab("Character Management", x => _charManagementRenderer.Draw());
 
-                ImGui.EndTabBar();
+            ImGui.EndTabBar();
 
-                // Helper method for reducing boilerplate
-                void Tab(string name, Action<CharacterConfig> contentSelector)
+            // Helper method for reducing boilerplate
+            void Tab(string name, Action<CharacterConfig> contentSelector)
+            {
+                if (ImGui.BeginTabItem(name))
                 {
-                    if (ImGui.BeginTabItem(name))
-                    {
-                        contentSelector(characterConfig);
-                        ImGui.EndTabItem();
-                    }
+                    contentSelector(characterConfig);
+                    ImGui.EndTabItem();
                 }
             }
-
-            _windowMinWidth = ImGui.GetWindowWidth();
         }
 
-        ImGui.End();
+        _windowMinWidth = ImGui.GetWindowWidth();
+    }
 
-        if (!_isOpen)
-        {
-            _plugin.CharacterManager.SaveCurrentCharacterConfig();
-            _plugin.SaveConfig(_plugin.Configuration);
-            _plugin.WindowManager.Close(this);
-        }
+    public override void OnClose()
+    {
+        base.OnClose();
+        _plugin.CharacterManager.SaveCurrentCharacterConfig();
+        _plugin.SaveConfig(_plugin.Configuration);
+        _plugin.WindowManager.Remove(this);
     }
 
     private void GeneralConfigTab(CharacterConfig characterConfig)
@@ -104,13 +106,59 @@ internal sealed class ConfigWindow : IWindow
 
         ImGui.Text("For an override to take effect, the selected group has to enable at least one mount.");
 
+        EnableFlyingRouletteButtonCheckbox(characterConfig);
+
+        bool suppressChatErrors = characterConfig.SuppressChatErrors;
+        _ = ImGui.Checkbox("Suppress error messages in chat", ref suppressChatErrors);
+
         characterConfig.MountRouletteGroup = mountRouletteGroupName;
         characterConfig.FlyingMountRouletteGroup = flyingRouletteGroupName;
         characterConfig.RevealMountsNormal = revealMountsNormal;
         characterConfig.RevealMountsFlying = revealMountsFlying;
+        characterConfig.SuppressChatErrors = suppressChatErrors;
 
         // backwards compatibility
         _plugin.Configuration.Enabled = (mountRouletteGroupName ?? flyingRouletteGroupName) is not null;
+    }
+
+    private void EnableFlyingRouletteButtonCheckbox(CharacterConfig characterConfig)
+    {
+        bool enableFlyingRouletteButton = characterConfig.EnableFlyingRouletteButton;
+        if (ImGui.Checkbox("Re-enable Flying Mount Roulette button", ref enableFlyingRouletteButton))
+        {
+            characterConfig.EnableFlyingRouletteButton = enableFlyingRouletteButton;
+            _services.GameFunctions.ToggleFlyingRouletteButton(enableFlyingRouletteButton);
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            _mainCommands ??= _services.DataManager.GetExcelSheet<MainCommand>()!.Where(x => x.RowId is 3 or 61).Select(x => x.Name.ToString()).ToArray();
+
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, ImGui.GetStyle().ItemSpacing.Y));
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                ImGui.BeginTooltip();
+
+                ImGui.Text("Flying Mount Roulette is available from the ");
+                ImGui.SameLine();
+                for (int i = 0; i < _mainCommands.Length; i++)
+                {
+                    ImGui.TextColored(new Vector4(0.5f, 0.5f, 1f, 1), _mainCommands[i]);
+                    ImGui.SameLine();
+
+                    if (i < _mainCommands.Length - 1)
+                    {
+                        ImGui.Text(" and ");
+                        ImGui.SameLine();
+                    }
+                }
+
+                ImGui.Text(" windows");
+                ImGui.EndTooltip();
+            }
+
+            ImGui.PopStyleVar();
+        }
     }
 
     private void RouletteGroup(CharacterConfig characterConfig, ref string? groupName, ref bool show, bool isFlying = false)
@@ -144,36 +192,6 @@ internal sealed class ConfigWindow : IWindow
             }
 
             ImGui.EndChildFrame();
-        }
-
-        if (isFlying)
-        {
-            _mainCommands ??= _services.DataManager.GetExcelSheet<MainCommand>()!.Where(x => x.RowId is 3 or 61).Select(x => x.Name.ToString()).ToArray();
-
-            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, ImGui.GetStyle().ItemSpacing.Y));
-            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            {
-                ImGui.BeginTooltip();
-
-                ImGui.Text("Flying Mount Roulette is available from the ");
-                ImGui.SameLine();
-                for (int i = 0; i < _mainCommands.Length; i++)
-                {
-                    ImGui.TextColored(new Vector4(0.5f, 0.5f, 1f, 1), _mainCommands[i]);
-                    ImGui.SameLine();
-
-                    if (i < _mainCommands.Length - 1)
-                    {
-                        ImGui.Text(" and ");
-                        ImGui.SameLine();
-                    }
-                }
-
-                ImGui.Text(" windows");
-                ImGui.EndTooltip();
-            }
-
-            ImGui.PopStyleVar();
         }
     }
 

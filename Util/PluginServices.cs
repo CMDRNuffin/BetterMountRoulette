@@ -9,16 +9,16 @@ using Lumina;
 
 using System;
 
-internal sealed class Services : IDisposable
+public sealed class PluginServices : IDisposable
 {
     internal readonly IDalamudPluginInterface DalamudPluginInterface;
     private bool _disposedValue;
 
     [PluginService]
-    internal ISigScanner SigScanner { get; private set; } = null!;
+    public ISigScanner SigScanner { get; private set; } = null!;
 
     [PluginService]
-    internal ICommandManager CommandManager { get; private set; } = null!;
+    public ICommandManager CommandManager { get; private set; } = null!;
 
     [PluginService]
     public IGameGui GameGui { get; private set; } = null!;
@@ -29,28 +29,31 @@ internal sealed class Services : IDisposable
     internal GameData GameData => DataManager.GameData;
 
     [PluginService]
-    internal IChatGui Chat { get; private set; } = null!;
+    public IChatGui Chat { get; private set; } = null!;
 
     [PluginService]
-    internal ICondition Condition { get; private set; } = null!;
+    public ICondition Condition { get; private set; } = null!;
 
     [PluginService]
-    internal IClientState ClientState { get; private set; } = null!;
+    public IClientState ClientState { get; private set; } = null!;
 
     [PluginService]
-    internal IFramework Framework { get; private set; } = null!;
+    public IFramework Framework { get; private set; } = null!;
 
     [PluginService]
-    internal ITextureProvider TextureProvider { get; private set; } = null!;
+    public ITextureProvider TextureProvider { get; private set; } = null!;
 
     [PluginService]
-    internal IPluginLog PluginLog { get; private set; } = null!;
+    public IPluginLog PluginLog { get; private set; } = null!;
 
     [PluginService]
-    internal IGameInteropProvider GameInteropProvider { get; private set; } = null!;
+    public IGameInteropProvider GameInteropProvider { get; private set; } = null!;
 
     [PluginService]
-    internal IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+    public IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+
+    [PluginService]
+    public IKeyState KeyState { get; private set; } = null!;
 
     internal GameFunctions GameFunctions { get; }
 
@@ -82,7 +85,7 @@ internal sealed class Services : IDisposable
         }
     }
 
-    public Services(IDalamudPluginInterface pluginInterface)
+    internal PluginServices(IDalamudPluginInterface pluginInterface)
     {
         DalamudPluginInterface = pluginInterface;
         _ = pluginInterface.Inject(this);
@@ -121,7 +124,7 @@ internal sealed class Services : IDisposable
         }
     }
 
-    ~Services()
+    ~PluginServices()
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: false);

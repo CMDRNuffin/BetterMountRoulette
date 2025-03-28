@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 internal sealed class AgentMountNoteBookHooks : IDisposable
 {
     private bool _disposedValue;
-    private readonly Services _services;
+    private readonly PluginServices _services;
     private readonly Hook<AgentMountNoteBookUseRouletteDetour> _agentMountNoteBookUseRouletteHook;
     private readonly Hook<AgentMountNoteBookGetRouletteIconDetour> _agentMountNoteBookGetRouletteIconHook;
     private readonly Hook<AgentMountNoteBookGetRouletteActionIdDetour> _agentMountNoteBookGetRouletteActionIdHook;
@@ -21,7 +21,7 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
     private unsafe delegate uint AgentMountNoteBookGetRouletteActionIdDetour(AgentInterface* @this, uint rouletteIndex);
     private unsafe delegate bool AgentMountNoteBookIsRouletteAvailableDetour(AgentInterface* @this, uint rouletteIndex);
 
-    public unsafe AgentMountNoteBookHooks(Services services)
+    public unsafe AgentMountNoteBookHooks(PluginServices services)
     {
         _services = services;
 
@@ -39,11 +39,22 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
         _agentMountNoteBookIsRouletteAvailableHook = services.GameInteropProvider.HookFromAddress<AgentMountNoteBookIsRouletteAvailableDetour>(
             vtable->IsRouletteAvailable,
             OnIsRouletteAvailable);
+    }
 
+    internal void Enable()
+    {
         _agentMountNoteBookUseRouletteHook.Enable();
         _agentMountNoteBookGetRouletteIconHook.Enable();
         _agentMountNoteBookGetRouletteActionIdHook.Enable();
         _agentMountNoteBookIsRouletteAvailableHook.Enable();
+    }
+
+    internal void Disable()
+    {
+        _agentMountNoteBookUseRouletteHook.Disable();
+        _agentMountNoteBookGetRouletteIconHook.Disable();
+        _agentMountNoteBookGetRouletteActionIdHook.Disable();
+        _agentMountNoteBookIsRouletteAvailableHook.Disable();
     }
 
     private unsafe bool OnIsRouletteAvailable(AgentInterface* @this, uint rouletteIndex)
@@ -112,19 +123,19 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [StructLayout(LayoutKind.Explicit, Size = 0x158)]
+    [StructLayout(LayoutKind.Explicit, Size = 0x160)]
     private unsafe struct AgentMountNoteBookVTable
     {
-        [FieldOffset(0x88)]
+        [FieldOffset(0x90)]
         public unsafe delegate* unmanaged<AgentInterface*, uint, bool> UseRoulette;
 
-        [FieldOffset(0xB8)]
+        [FieldOffset(0xC0)]
         public unsafe delegate* unmanaged<AgentInterface*, uint, bool> IsRouletteAvailable;
 
-        [FieldOffset(0xC0)]
+        [FieldOffset(0xC8)]
         public unsafe delegate* unmanaged<AgentInterface*, uint, uint> GetRouletteActionId;
 
-        [FieldOffset(0xC8)]
+        [FieldOffset(0xD0)]
         public unsafe delegate* unmanaged<AgentInterface*, uint, uint> GetRouletteIcon;
     }
 }

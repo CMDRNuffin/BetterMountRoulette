@@ -10,13 +10,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-internal sealed class MountRenderer(Services services)
+internal sealed class MountRenderer(PluginServices services)
 {
     private const int PAGE_SIZE = COLUMNS * ROWS;
     private const int COLUMNS = 5;
     private const int ROWS = 6;
 
-    private readonly Services _services = services;
+    private readonly PluginServices _services = services;
 
     public void RenderPage(List<MountData> mounts, MountGroup group, int page)
     {

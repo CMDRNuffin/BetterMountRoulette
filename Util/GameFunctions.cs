@@ -32,25 +32,25 @@ public enum MountRouletteOverride
 
 internal sealed class GameFunctions : IDisposable
 {
-    private readonly Services _services;
+    private readonly PluginServices _services;
     private readonly Dictionary<ushort, uint[]?> _maxSpeedUnlockCache = [];
 
     private bool _disposedValue;
 
     private readonly Hook<ExdModule.Delegates.GetRowBySheetIndexAndRowIndex> _exdModuleGetRowBySheetIndexAndRowIndexHook;
 
-    [Signature("E8 ?? ?? ?? ?? 0F B6 54 24 40 49 8B CD", Fallibility = Fallibility.Infallible)]
+    [Signature("E8 ?? ?? ?? ?? 4C 8B BC 24 20 01 00 00 48 8B 8C 24 10 01 00 00", Fallibility = Fallibility.Infallible)]
     private readonly unsafe delegate* unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
 
-    [Signature("E8 ?? ?? ?? ?? 41 83 FF 04 0F 84 ?? ?? ?? ??", Fallibility = Fallibility.Infallible)]
+    [Signature("E8 ?? ?? ?? ?? 41 83 FE 04 0F 84 ?? ?? ?? ??", Fallibility = Fallibility.Infallible)]
     private readonly Hook<ActionManagerInitializeCastBarDetour> _actionManagerInitializeCastbarHook;
 
     private readonly AgentMountNoteBookHooks _agentMountNoteBookHooks;
 
     private unsafe delegate void AgentActionMenuLoadActionsDetour(AgentActionMenu* @this, bool reload);
-    private unsafe delegate void ActionManagerInitializeCastBarDetour(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex, float castTimeElapsed);
+    private unsafe delegate void ActionManagerInitializeCastBarDetour(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex);
 
-    public unsafe GameFunctions(Services services)
+    public unsafe GameFunctions(PluginServices services)
     {
         _services = services;
         _agentActionMenuLoadActions = null;
@@ -80,8 +80,8 @@ internal sealed class GameFunctions : IDisposable
     {
         ExcelSheet<TerritoryType> territory = _services.DataManager.GetExcelSheet<TerritoryType>();
         TerritoryType currentTerritory = territory.GetRow(_services.ClientState.TerritoryType);
-        return currentTerritory.Unknown4 > 0
-            && PlayerState.Instance()->IsAetherCurrentZoneComplete(currentTerritory.Unknown4);
+        return currentTerritory.AetherCurrentCompFlgSet.IsValid
+            && PlayerState.Instance()->IsAetherCurrentZoneComplete(currentTerritory.AetherCurrentCompFlgSet.RowId);
     }
 
     public unsafe (byte MaxSpeed, byte CurrentSpeed) GetCurrentTerritoryMountSpeedInfo()
@@ -159,7 +159,7 @@ internal sealed class GameFunctions : IDisposable
         return nint.Zero;
     }
 
-    private unsafe void OnActionManagerInitializeCastBar(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex, float castTimeElapsed)
+    private unsafe void OnActionManagerInitializeCastBar(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex)
     {
         if (chara == Control.GetLocalPlayer()) /* don't bork other players' cast bars */
         {
@@ -171,7 +171,7 @@ internal sealed class GameFunctions : IDisposable
             }
         }
 
-        _actionManagerInitializeCastbarHook.Original(@this, chara, actionType, actionId, spellId, mountRouletteIndex, castTimeElapsed);
+        _actionManagerInitializeCastbarHook.Original(@this, chara, actionType, actionId, spellId, mountRouletteIndex);
     }
 
     private unsafe CSExcelRow* ExdModuleGetRowBySheetIndexAndRowIndexHandler(ExdModule* thisPtr, uint sheetIndex, uint rowIndex)
@@ -211,10 +211,7 @@ internal sealed class GameFunctions : IDisposable
 
             _exdModuleGetRowBySheetIndexAndRowIndexHook.Dispose();
 
-            var rouletteItem = new FlyingMountRoulette(Framework.Instance()->ExdModule->GetRowBySheetIndexAndRowIndex(0x68, 24));
-            rouletteItem.DisableUIPriority();
-
-            UpdateActionMenu();
+            ToggleFlyingRouletteButton(false);
 
             _agentMountNoteBookHooks.Dispose();
             _actionManagerInitializeCastbarHook.Dispose();
@@ -234,6 +231,23 @@ internal sealed class GameFunctions : IDisposable
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
+    }
+
+    internal unsafe void ToggleFlyingRouletteButton(bool enableFlyingRouletteButton)
+    {
+        var rouletteItem = new FlyingMountRoulette(Framework.Instance()->ExdModule->GetRowBySheetIndexAndRowIndex(0x68, 24));
+        if (enableFlyingRouletteButton)
+        {
+            _agentMountNoteBookHooks.Enable();
+            rouletteItem.EnableUIPriority();
+        }
+        else
+        {
+            _agentMountNoteBookHooks.Disable();
+            rouletteItem.DisableUIPriority();
+        }
+
+        UpdateActionMenu();
     }
 
     private sealed unsafe class UnsafeCodeReader(byte* address) : CodeReader

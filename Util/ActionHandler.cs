@@ -15,7 +15,7 @@ internal sealed class ActionHandler : IDisposable
     private const uint NORMAL_ROULETTE_ACTION_ID = 9;
     private const uint FLYING_ROULETTE_ACTION_ID = 24;
 
-    private readonly Services _services;
+    private readonly PluginServices _services;
     private readonly MountRegistry _mountRegistry;
     private readonly Hook<UseActionHandler>? _useActionHook;
     private readonly GameFunctions _gameFunctions;
@@ -23,7 +23,7 @@ internal sealed class ActionHandler : IDisposable
     private bool _disposedValue;
 
     public unsafe ActionHandler(
-        Services services,
+        PluginServices services,
         MountRegistry mountRegistry)
     {
         _services = services;
@@ -130,7 +130,7 @@ internal sealed class ActionHandler : IDisposable
 
         if (string.IsNullOrWhiteSpace(arguments))
         {
-            _services.Chat.PrintError("Please specify a mount group");
+            PrintError("Please specify a mount group");
             return;
         }
 
@@ -148,7 +148,7 @@ internal sealed class ActionHandler : IDisposable
             mountGroup = characterConfig.GetMountGroup(arguments);
             if (mountGroup == null)
             {
-                _services.Chat.PrintError($"Mount group \"{arguments}\" not found.");
+                PrintError($"Mount group \"{arguments}\" not found.");
                 return;
             }
         }
@@ -161,7 +161,16 @@ internal sealed class ActionHandler : IDisposable
         }
         else
         {
-            _services.Chat.PrintError($"Unable to summon mount from group \"{arguments}\".");
+            PrintError($"Unable to summon mount from group \"{arguments}\".");
+        }
+    }
+
+    internal void PrintError(string message)
+    {
+        _services.PluginLog.Error(message);
+        if (!(CharacterConfig?.SuppressChatErrors ?? false))
+        {
+            _services.Chat.PrintError(message);
         }
     }
 

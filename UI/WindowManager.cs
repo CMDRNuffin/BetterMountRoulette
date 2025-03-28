@@ -1,63 +1,91 @@
 ﻿namespace BetterMountRoulette.UI;
 
+using BetterMountRoulette.UI.Base;
 using BetterMountRoulette.Util;
+
+using Dalamud.Interface.Windowing;
 
 using ImGuiNET;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 
-internal sealed class WindowManager(BetterMountRoulettePlugin plugin, Services services)
+internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServices services)
 {
     private readonly BetterMountRoulettePlugin _plugin = plugin;
-    private readonly Services _services = services;
-    private readonly WindowStack _windows = new();
-    private readonly List<IWindow> _removeList = [];
+    private readonly PluginServices _services = services;
+    private readonly WindowSystem _windows = new();
+    private readonly WindowSystem _dialogs = new();
+    private readonly List<Window> _windowsToRemove = new();
 
     public void Draw()
     {
-        _windows.Draw();
-
-        foreach (IWindow item in _removeList)
+        // clean up closed windows
+        // maybe todo: keep windows that we want to keep alive?
+        foreach (Window window in _windowsToRemove)
         {
-            _windows.Remove(item);
+            Remove(window);
         }
 
-        _removeList.Clear();
+        _windowsToRemove.Clear();
+        _windowsToRemove.AddRange(_windows.Windows.Where(w => !w.IsOpen).Concat(_dialogs.Windows.Where(w => !w.IsOpen)));
+
+        ImGui.BeginDisabled(_dialogs.Windows.Count > 0);
+        _windows.Draw();
+        ImGui.EndDisabled();
+
+        _dialogs.Draw();
     }
 
-    public void Open(IWindow window)
+    public void Add(Window window)
     {
         _windows.AddWindow(window);
     }
 
-    public void Close(IWindow window)
+    public void Remove(Window window)
     {
-        _removeList.Add(window);
+        if (_dialogs.Windows.Contains(window))
+        {
+            _dialogs.RemoveWindow(window);
+        }
+        else
+        {
+            _windows.RemoveWindow(window);
+        }
+
+        if (window is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
     }
 
-    public void OpenDialog(IWindow window)
+    public void OpenDialog(DialogWindow window)
     {
-        _windows.AddDialog(window);
+        window.IsOpen = true;
+        _dialogs.AddWindow(window);
     }
 
     public void OpenConfigWindow()
     {
-        var configWindow = new ConfigWindow(_plugin, _services);
-        if (_windows.Contains(configWindow))
+        ConfigWindow? configWindow = _windows.Windows.OfType<ConfigWindow>().FirstOrDefault();
+        if (configWindow != null)
         {
+            configWindow.BringToFront();
             return;
         }
 
-        configWindow.Open();
-        Open(configWindow);
+        configWindow = new ConfigWindow(_plugin, _services)
+        {
+            IsOpen = true
+        };
+
+        Add(configWindow);
     }
 
     public void Confirm(string title, string text, params ButtonConfig[] buttons)
     {
-        OpenDialog(new DialogPrompt(this, title, text, buttons));
+        OpenDialog(new DialogPrompt(title, text, buttons));
     }
 
     public void ConfirmYesNo(string title, string text, Action confirmed)
@@ -97,89 +125,4 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, Services s
             return new(value.text, value.execute);
         }
     }
-
-    private sealed class WindowStack
-    {
-        private readonly List<(List<IWindow> Windows, bool IsDialog)> _windows = [];
-
-        public bool Contains(IWindow window)
-        {
-            return _windows.Any(w => w.Windows.Any(x => Equals(x, window)));
-        }
-
-        public T? Get<T>() where T : IWindow
-        {
-            return _windows.SelectMany(w => w.Windows).OfType<T>().FirstOrDefault();
-        }
-
-        public void AddWindow(IWindow window)
-        {
-            if (_windows.Count == 0 || _windows.Last().IsDialog)
-            {
-                _windows.Add((new List<IWindow>(), false));
-            }
-
-            _windows.Last().Windows.Add(window);
-        }
-
-        public void AddDialog(IWindow window)
-        {
-            _windows.Add((new List<IWindow>(), true));
-            _windows[^1].Windows.Add(window);
-        }
-
-        public void Remove(IWindow window)
-        {
-            for (int i = 0; i < _windows.Count; ++i)
-            {
-                for (int j = _windows[i].Windows.Count - 1; j < _windows[i].Windows.Count; ++j)
-                {
-                    if (window == _windows[i].Windows[j])
-                    {
-                        _windows[i].Windows.RemoveAt(j);
-                        break;
-                    }
-                }
-
-                if (_windows[i].Windows.Count == 0)
-                {
-                    _windows.RemoveAt(i);
-                    --i;
-                }
-            }
-        }
-
-        public void Draw()
-        {
-            int highestDialogIndex = _windows.FindLastIndex(x => x.IsDialog);
-            for (int i = 0; i < _windows.Count; ++i)
-            {
-                ImGui.BeginDisabled(i < highestDialogIndex);
-
-                try
-                {
-                    bool isDialog = _windows[i].IsDialog;
-                    foreach (IWindow window in _windows[i].Windows)
-                    {
-                        if (isDialog)
-                        {
-                            Vector2 mainViewportSize = ImGui.GetMainViewport().WorkSize;
-                            ImGui.SetNextWindowPos(mainViewportSize / 2, ImGuiCond.Appearing, new Vector2(.5f));
-                        }
-
-                        window.Draw();
-                    }
-                }
-                finally
-                {
-                    ImGui.EndDisabled();
-                }
-            }
-        }
-    }
-}
-
-internal interface IWindow
-{
-    void Draw();
 }

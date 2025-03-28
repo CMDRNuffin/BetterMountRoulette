@@ -24,6 +24,10 @@ internal sealed class CharacterConfig
 
     public string? FlyingMountRouletteGroup { get; set; }
 
+    public bool SuppressChatErrors { get; set; }
+
+    public bool EnableFlyingRouletteButton { get; set; } = true;
+
     [JsonIgnore]
     public bool HasNonDefaultGroups => Groups.Count > 1;
 

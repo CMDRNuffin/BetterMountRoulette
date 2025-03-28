@@ -23,7 +23,7 @@ internal sealed class MountGroupPage
         Mounts
     }
 
-    internal MountGroupPage(BetterMountRoulettePlugin plugin, Services services)
+    internal MountGroupPage(BetterMountRoulettePlugin plugin, PluginServices services)
     {
         _plugin = plugin;
         _mountRenderer = new MountRenderer(services);
@@ -265,7 +265,6 @@ internal sealed class MountGroupPage
         if (ImGui.Button("Add"))
         {
             var dialog = new RenameItemDialog(
-                _plugin.WindowManager,
                 "Add a new group",
                 string.Empty,
                 x => AddMountGroup(characterConfig, x))
@@ -281,7 +280,6 @@ internal sealed class MountGroupPage
         if (ImGui.Button("Edit"))
         {
             var dialog = new RenameItemDialog(
-                _plugin.WindowManager,
                 $"Rename {_currentMountGroup}",
                 _currentMountGroup,
                 (newName) => RenameMountGroup(_currentMountGroup, newName))

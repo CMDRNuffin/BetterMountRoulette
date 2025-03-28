@@ -2,9 +2,9 @@
 
 using Dalamud.Plugin.Services;
 
-internal sealed class TextureHelper(Services services)
+internal sealed class TextureHelper(PluginServices services)
 {
-    private readonly Services _services = services;
+    private readonly PluginServices _services = services;
     private ITextureProvider TextureProvider => _services.TextureProvider;
 
     public nint LoadUldTexture(string name)

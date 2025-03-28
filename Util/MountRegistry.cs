@@ -17,9 +17,9 @@ using System.Linq;
 /// Responsible for maintaining a list of mounts with ID, name, icon, and whether or not the mount is unlocked.
 /// </summary>
 [SuppressMessage("Performance", "CA1812", Justification = "Instantiated via reflection")]
-internal sealed class MountRegistry(Services services)
+internal sealed class MountRegistry(PluginServices services)
 {
-    private readonly Services _services = services;
+    private readonly PluginServices _services = services;
     private readonly Dictionary<uint, MountData> _mountsByID = [];
     private readonly List<MountData> _mounts = [];
     private bool _isInitialized;

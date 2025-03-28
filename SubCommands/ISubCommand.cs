@@ -14,7 +14,7 @@ internal interface ISubCommand
 
     public BetterMountRoulettePlugin Plugin { get; set; }
 
-    public Services Services { get; set; }
+    public PluginServices Services { get; set; }
 
     void AddSubCommand(ISubCommand child);
 

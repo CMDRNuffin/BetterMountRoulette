@@ -1,5 +1,7 @@
 ﻿namespace BetterMountRoulette.UI;
 
+using BetterMountRoulette.UI.Base;
+
 using Dalamud.Interface.Colors;
 
 using ImGuiNET;
@@ -8,14 +10,9 @@ using System;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-internal sealed class RenameItemDialog(
-    WindowManager manager,
-    string title,
-    string initialName,
-    Action<string> onComplete) : IWindow
+internal sealed class RenameItemDialog(string title, string initialName, Action<string> onComplete)
+    : DialogWindow(title, ImGuiWindowFlags.AlwaysAutoResize)
 {
-    private readonly string _title = title;
-    private readonly WindowManager _manager = manager;
     private string _name = initialName;
     private readonly Action<string> _onComplete = onComplete;
     private Func<string, bool>? _validateName;
@@ -31,47 +28,31 @@ internal sealed class RenameItemDialog(
         _getValidationErrors = getValidationErrors;
     }
 
-    public void Draw()
+    public override void Draw()
     {
-        bool isOpen = true;
-        bool save = false;
-        bool cancel = false;
-        if (ImGui.Begin(_title, ref isOpen, ImGuiWindowFlags.AlwaysAutoResize))
+        ImGui.Text("Name:");
+        ImGui.SameLine();
+        _ = ImGui.InputText("", ref _name, 1000);
+        bool nameIsInvalid = !ValidateNameImpl();
+
+        ImGui.BeginDisabled(nameIsInvalid);
+        if (ImGui.Button("Save"))
         {
-            ImGui.Text("Name:");
-            ImGui.SameLine();
-            _ = ImGui.InputText("", ref _name, 1000);
-            bool nameIsInvalid = !ValidateNameImpl();
-
-            ImGui.BeginDisabled(nameIsInvalid);
-            save = ImGui.Button("Save");
-            ImGui.EndDisabled();
-
-            ImGui.SameLine();
-            cancel = ImGui.Button("Cancel");
-
-            if (nameIsInvalid)
-            {
-                ImGui.TextColored(ImGuiColors.DalamudOrange, GetValidationErrorsImpl());
-            }
-        }
-
-        ImGui.End();
-
-        if (save)
-        {
-            cancel = true;
             _onComplete(_name);
+            IsOpen = false;
         }
 
-        if (cancel)
+        ImGui.EndDisabled();
+
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel"))
         {
-            isOpen = false;
+            IsOpen = false;
         }
 
-        if (!isOpen)
+        if (nameIsInvalid)
         {
-            _manager.Close(this);
+            ImGui.TextColored(ImGuiColors.DalamudOrange, GetValidationErrorsImpl());
         }
     }
 

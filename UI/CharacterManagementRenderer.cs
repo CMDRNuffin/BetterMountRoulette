@@ -15,12 +15,12 @@ using System.Numerics;
 using System.Text;
 
 internal sealed class CharacterManagementRenderer(
-    Services services,
+    PluginServices services,
     WindowManager windowManager,
     CharacterManager characterManager,
     Configuration configuration)
 {
-    private readonly Services _services = services;
+    private readonly PluginServices _services = services;
     private readonly WindowManager _windowManager = windowManager;
     private readonly CharacterManager _characterManager = characterManager;
     private readonly Configuration _configuration = configuration;

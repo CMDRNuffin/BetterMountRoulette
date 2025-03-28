@@ -12,9 +12,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-internal sealed class CharacterManager(Services services, Configuration configuration)
+internal sealed class CharacterManager(PluginServices services, Configuration configuration)
 {
-    private readonly Services _services = services;
+    private readonly PluginServices _services = services;
     private readonly Configuration _configuration = configuration;
     private CharacterConfig? _characterConfig;
     private ulong? _playerID;
@@ -29,6 +29,7 @@ internal sealed class CharacterManager(Services services, Configuration configur
         }
 
         _playerID = playerID;
+        _characterConfig = null;
         if (_configuration.CharacterConfigs.TryGetValue(playerID, out CharacterConfigEntry? cce))
         {
             _characterConfig = LoadCharacterConfig(cce);
