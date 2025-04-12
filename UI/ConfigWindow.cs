@@ -90,7 +90,7 @@ internal sealed class ConfigWindow : Window
         base.OnClose();
         _plugin.CharacterManager.SaveCurrentCharacterConfig();
         _plugin.SaveConfig(_plugin.Configuration);
-        _plugin.WindowManager.Remove(this);
+        _plugin.WindowManager.RemoveWindow(this);
     }
 
     private void GeneralConfigTab(CharacterConfig characterConfig)

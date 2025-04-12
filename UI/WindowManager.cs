@@ -15,23 +15,12 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
 {
     private readonly BetterMountRoulettePlugin _plugin = plugin;
     private readonly PluginServices _services = services;
-    private readonly WindowSystem _windows = new();
-    private readonly WindowSystem _dialogs = new();
-    private readonly List<Window> _windowsToRemove = new();
+    private readonly WindowStack _windows = new();
+    private readonly WindowStack _dialogs = new();
 
     public void Draw()
     {
-        // clean up closed windows
-        // maybe todo: keep windows that we want to keep alive?
-        foreach (Window window in _windowsToRemove)
-        {
-            Remove(window);
-        }
-
-        _windowsToRemove.Clear();
-        _windowsToRemove.AddRange(_windows.Windows.Where(w => !w.IsOpen).Concat(_dialogs.Windows.Where(w => !w.IsOpen)));
-
-        ImGui.BeginDisabled(_dialogs.Windows.Count > 0);
+        ImGui.BeginDisabled(_dialogs.HasWindows);
         _windows.Draw();
         ImGui.EndDisabled();
 
@@ -40,30 +29,28 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
 
     public void Add(Window window)
     {
-        _windows.AddWindow(window);
+        _windows.Add(window);
     }
 
-    public void Remove(Window window)
+    public void RemoveWindow(Window window)
     {
-        if (_dialogs.Windows.Contains(window))
-        {
-            _dialogs.RemoveWindow(window);
-        }
-        else
-        {
-            _windows.RemoveWindow(window);
-        }
+        RemoveWindowInternal(_windows, window);
+    }
 
-        if (window is IDisposable disposable)
-        {
-            disposable.Dispose();
-        }
+    public void RemoveDialog(Window window)
+    {
+        RemoveWindowInternal(_dialogs, window);
+    }
+
+    private static void RemoveWindowInternal(WindowStack system, Window window)
+    {
+        system.Remove(window);
     }
 
     public void OpenDialog(DialogWindow window)
     {
         window.IsOpen = true;
-        _dialogs.AddWindow(window);
+        _dialogs.Add(window);
     }
 
     public void OpenConfigWindow()
@@ -71,6 +58,7 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
         ConfigWindow? configWindow = _windows.Windows.OfType<ConfigWindow>().FirstOrDefault();
         if (configWindow != null)
         {
+            configWindow.IsOpen = true;
             configWindow.BringToFront();
             return;
         }
@@ -123,6 +111,55 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
         public static implicit operator ButtonConfig((Action execute, string text) value)
         {
             return new(value.text, value.execute);
+        }
+    }
+
+    private sealed class WindowStack
+    {
+        private readonly List<Window> _windowsToRemove = new();
+        private readonly WindowSystem _windows = new();
+
+        public bool HasWindows => _windows.Windows.Count > 0;
+
+        public IReadOnlyList<Window> Windows => _windows.Windows;
+
+        public void Draw()
+        {
+            // clean up closed windows
+            // maybe todo: keep windows that we want to keep alive?
+            foreach (Window window in _windowsToRemove)
+            {
+                Remove(window);
+            }
+
+            _windowsToRemove.Clear();
+            _windowsToRemove.AddRange(_windows.Windows.Where(x => !x.IsOpen));
+            _windows.Draw();
+        }
+
+        public void Remove(Window window)
+        {
+            if (_windows.Windows.Contains(window))
+            {
+                // if window is still open, close it so any close action can happen
+                if (window.IsOpen)
+                {
+                    window.IsOpen = false;
+                }
+                else
+                {
+                    _windows.RemoveWindow(window);
+                    if (window is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
+                }
+            }
+        }
+
+        public void Add(Window window)
+        {
+            _windows.AddWindow(window);
         }
     }
 }
