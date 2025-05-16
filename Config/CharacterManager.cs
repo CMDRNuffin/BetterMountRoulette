@@ -103,29 +103,26 @@ internal sealed class CharacterManager(PluginServices services, Configuration co
         SaveCurrentCharacterConfig(cce);
     }
 
-    private void SaveCharacterConfig(CharacterConfigEntry entry, CharacterConfig config)
+    private void SaveCharacterConfig(CharacterConfigEntry entry, CharacterConfig? config)
     {
-        string dir = GetCharConfigDir();
-        if (!Directory.Exists(dir))
+        if (config is null)
         {
-            _ = Directory.CreateDirectory(dir);
+            return;
         }
+
+        string dir = GetCharConfigDir();
+        _ = Directory.CreateDirectory(dir);
 
         File.WriteAllText(Path.Combine(dir, entry.FileName), JsonConvert.SerializeObject(config));
     }
 
     private CharacterConfig? LoadCharacterConfig(ulong playerID)
     {
-        if (_configuration.CharacterConfigs.TryGetValue(playerID, out CharacterConfigEntry? cce))
-        {
-            CharacterConfig? res = playerID == Configuration.DUMMY_LEGACY_CONFIG_ID
+        return _configuration.CharacterConfigs.TryGetValue(playerID, out CharacterConfigEntry? cce)
+            ? playerID == Configuration.DUMMY_LEGACY_CONFIG_ID
                 ? LoadLegacyCharacterConfig()
-                : LoadCharacterConfig(cce);
-
-            return res;
-        }
-
-        return null;
+                : LoadCharacterConfig(cce)
+            : null;
     }
 
     private CharacterConfig LoadLegacyCharacterConfig()

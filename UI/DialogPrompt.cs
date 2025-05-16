@@ -31,10 +31,11 @@ internal sealed class DialogPrompt(string title, string text, WindowManager.Butt
             widths[i] = width;
             if (width > largestWidth)
             {
-                ImGui.Dummy(new(width, 0));
                 largestWidth = width;
             }
         }
+
+        ImGui.Dummy(new(largestWidth, 0));
 
         // step 2: actually draw the lines
         for (int i = 0; i < lines.Length; i++)

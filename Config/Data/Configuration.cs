@@ -5,6 +5,7 @@ using Dalamud.Configuration;
 using Newtonsoft.Json;
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 internal sealed class Configuration : IPluginConfiguration
 {
@@ -60,19 +61,18 @@ internal sealed class Configuration : IPluginConfiguration
 
 public class CharacterConfigEntry
 {
-    private string? _characterName;
-    private string? _characterWorld;
-
+    [field: MaybeNull]
     public string CharacterName
     {
-        get => _characterName ?? "INVALID CONFIG";
-        set => _characterName = value;
+        get => field ?? "INVALID CONFIG";
+        set;
     }
 
+    [field: MaybeNull]
     public string CharacterWorld
     {
-        get => _characterWorld ?? "INVALID CONFIG";
-        set => _characterWorld = value;
+        get => field ?? "INVALID CONFIG";
+        set;
     }
 
     public string FileName { get; set; } = "";
