@@ -8,6 +8,7 @@ using BetterMountRoulette.Util;
 
 using Dalamud.Game.Command;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 
 using System;
 using System.Collections.Generic;
@@ -92,6 +93,20 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         }
     }
 
+    private void OnFrameworkUpdate(IFramework framework)
+    {
+        if (CharacterConfig is { EnableFlyingRouletteButton: bool enable })
+        {
+            if (!_services.GameFunctions.ToggleFlyingRouletteButton(enable))
+            {
+                // retry on the next frame if the sheet is not yet loaded
+                return;
+            }
+
+            _services.Framework.Update -= OnFrameworkUpdate;
+        }
+    }
+
     private void ImportCharacterConfig(int? @override = null)
     {
         switch (@override ?? Configuration.NewCharacterHandling)
@@ -135,7 +150,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 CharacterConfig.IsNew = false;
             }
 
-            _services.GameFunctions.ToggleFlyingRouletteButton(CharacterConfig.EnableFlyingRouletteButton);
+            _services.Framework.Update += OnFrameworkUpdate;
         }
     }
 

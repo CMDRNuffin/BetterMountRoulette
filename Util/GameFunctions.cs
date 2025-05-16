@@ -14,7 +14,6 @@ using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Component.Exd;
 
 using Iced.Intel;
 
@@ -32,14 +31,19 @@ public enum MountRouletteOverride
 
 internal sealed class GameFunctions : IDisposable
 {
+    private const uint GENERAL_ACTION_SHEET_INDEX = 0x68;
+    private const uint FLYING_MOUNT_ROULETTE_ROW_INDEX = 24;
+
     private readonly PluginServices _services;
     private readonly Dictionary<ushort, uint[]?> _maxSpeedUnlockCache = [];
 
     private bool _disposedValue;
 
-    private readonly Hook<ExdModule.Delegates.GetRowBySheetIndexAndRowIndex> _exdModuleGetRowBySheetIndexAndRowIndexHook;
-
-    [Signature("E8 ?? ?? ?? ?? 4C 8B BC 24 20 01 00 00 48 8B 8C 24 10 01 00 00", Fallibility = Fallibility.Infallible)]
+    // For finding it in the future:
+    // for ( i = 1; i < 0x2B; ++i )
+    // {
+    //     GeneralActionRow_1 = Component::Exd::ExdModule_GetGeneralActionRow_1(i);
+    [Signature("84 D2 0F 84 ?? ?? ?? ?? 4C 8B DC 41 56 48 81 EC 70 01 00 00", Fallibility = Fallibility.Infallible)]
     private readonly unsafe delegate* unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
 
     [Signature("E8 ?? ?? ?? ?? 41 83 FE 04 0F 84 ?? ?? ?? ??", Fallibility = Fallibility.Infallible)]
@@ -58,11 +62,6 @@ internal sealed class GameFunctions : IDisposable
         services.GameInteropProvider.InitializeFromAttributes(this);
 
         _actionManagerInitializeCastbarHook.Enable();
-
-        _exdModuleGetRowBySheetIndexAndRowIndexHook = _services.GameInteropProvider.HookFromAddress<ExdModule.Delegates.GetRowBySheetIndexAndRowIndex>(
-            ExdModule.MemberFunctionPointers.GetRowBySheetIndexAndRowIndex,
-            ExdModuleGetRowBySheetIndexAndRowIndexHandler);
-        _exdModuleGetRowBySheetIndexAndRowIndexHook.Enable();
 
         UpdateActionMenu();
 
@@ -174,19 +173,6 @@ internal sealed class GameFunctions : IDisposable
         _actionManagerInitializeCastbarHook.Original(@this, chara, actionType, actionId, spellId, mountRouletteIndex);
     }
 
-    private unsafe CSExcelRow* ExdModuleGetRowBySheetIndexAndRowIndexHandler(ExdModule* thisPtr, uint sheetIndex, uint rowIndex)
-    {
-        CSExcelRow* row = _exdModuleGetRowBySheetIndexAndRowIndexHook.Original(thisPtr, sheetIndex, rowIndex);
-        if (sheetIndex == 0x68 /* General Action */ && rowIndex == 24 /* flying mount roulette */)
-        {
-            new FlyingMountRoulette(row).EnableUIPriority();
-            _exdModuleGetRowBySheetIndexAndRowIndexHook.Disable();
-            _services.PluginLog.Debug("Hooked flying mount roulette");
-        }
-
-        return row;
-    }
-
     private unsafe void UpdateActionMenu()
     {
         if (_services.ClientState.IsLoggedIn)
@@ -195,7 +181,7 @@ internal sealed class GameFunctions : IDisposable
             if (agentActionMenu->GeneralList.Count > 0)
             {
                 // refresh action menu to add the flying mount roulette
-                _agentActionMenuLoadActions(AgentModule.Instance()->GetAgentActionMenu(), true);
+                _agentActionMenuLoadActions(agentActionMenu, true);
             }
         }
     }
@@ -209,9 +195,8 @@ internal sealed class GameFunctions : IDisposable
                 // TODO: dispose managed state (managed objects)
             }
 
-            _exdModuleGetRowBySheetIndexAndRowIndexHook.Dispose();
-
-            ToggleFlyingRouletteButton(false);
+            // discard the task. we don't care about waiting
+            _ = _services.Framework.RunOnFrameworkThread(() => ToggleFlyingRouletteButton(false));
 
             _agentMountNoteBookHooks.Dispose();
             _actionManagerInitializeCastbarHook.Dispose();
@@ -233,21 +218,43 @@ internal sealed class GameFunctions : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    internal unsafe void ToggleFlyingRouletteButton(bool enableFlyingRouletteButton)
+    /// <summary>
+    /// Enables or disables the flying mount roulette action in the Actions &amp; Traits and Mount Guide windows.
+    /// Requires being run on the framework thread to prevent racing conditions.
+    /// </summary>
+    /// <param name="enableFlyingRouletteButton">The desired display state of the flying mount roulette</param>
+    /// <returns>A boolean indicating whether the change was successful</returns>
+    internal unsafe bool ToggleFlyingRouletteButton(bool enableFlyingRouletteButton)
     {
-        var rouletteItem = new FlyingMountRoulette(Framework.Instance()->ExdModule->GetRowBySheetIndexAndRowIndex(0x68, 24));
+        return _services.Framework.IsInFrameworkUpdateThread && ToggleFlyingRouletteButtonInternal(enableFlyingRouletteButton);
+    }
+
+    private unsafe bool ToggleFlyingRouletteButtonInternal(bool enableFlyingRouletteButton)
+    {
+        CSExcelRow* excelSheet = Framework.Instance()->ExdModule->GetRowBySheetIndexAndRowIndex(GENERAL_ACTION_SHEET_INDEX, FLYING_MOUNT_ROULETTE_ROW_INDEX);
+        if (excelSheet is null || excelSheet->Data is null)
+        {
+            return false;
+        }
+
+        var rouletteItem = new FlyingMountRoulette(excelSheet);
+
+        Action<AgentMountNoteBookHooks> toggleHooksAction;
+
         if (enableFlyingRouletteButton)
         {
-            _agentMountNoteBookHooks.Enable();
-            rouletteItem.EnableUIPriority();
+            toggleHooksAction = x => x.Enable();
         }
         else
         {
-            _agentMountNoteBookHooks.Disable();
-            rouletteItem.DisableUIPriority();
+            toggleHooksAction = x => x.Disable();
         }
 
+        rouletteItem.SetValue(enableFlyingRouletteButton);
+        toggleHooksAction(_agentMountNoteBookHooks);
         UpdateActionMenu();
+
+        return true;
     }
 
     private sealed unsafe class UnsafeCodeReader(byte* address) : CodeReader
@@ -282,23 +289,18 @@ internal sealed class GameFunctions : IDisposable
         private const int UI_PRIORITY_OFFSET = 0x12;
 
         private const byte UI_PRIORITY_VALUE = 22 /* between mount roulette and minion roulette */;
-
-        public void EnableUIPriority()
-        {
-            if (_sheet != null)
-            {
-                ((byte*)_sheet->Data)[UI_PRIORITY_OFFSET] = UI_PRIORITY_VALUE;
-            }
-        }
-
-        public void DisableUIPriority()
-        {
-            if (_sheet != null)
-            {
-                ((byte*)_sheet->Data)[UI_PRIORITY_OFFSET] = 0;
-            }
-        }
+        private const byte DISABLED = 0;
 
         public byte UIPriority => _sheet != null ? ((byte*)_sheet->Data)[UI_PRIORITY_OFFSET] : (byte)0;
+
+        public void SetValue(bool value)
+        {
+            SetValue(_sheet, value ? UI_PRIORITY_VALUE : DISABLED);
+        }
+
+        private static void SetValue(CSExcelRow* row, byte value)
+        {
+            ((byte*)row->Data)[UI_PRIORITY_OFFSET] = value;
+        }
     }
 }

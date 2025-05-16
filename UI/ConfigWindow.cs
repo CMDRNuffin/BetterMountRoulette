@@ -127,7 +127,7 @@ internal sealed class ConfigWindow : Window
         if (ImGui.Checkbox("Re-enable Flying Mount Roulette button", ref enableFlyingRouletteButton))
         {
             characterConfig.EnableFlyingRouletteButton = enableFlyingRouletteButton;
-            _services.GameFunctions.ToggleFlyingRouletteButton(enableFlyingRouletteButton);
+            _ = _services.Framework.RunOnFrameworkThread(() => _services.GameFunctions.ToggleFlyingRouletteButton(enableFlyingRouletteButton));
         }
 
         if (ImGui.IsItemHovered())
