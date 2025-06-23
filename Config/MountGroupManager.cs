@@ -41,9 +41,9 @@ internal static class MountGroupManager
         }
 
         MountGroup? group = config.Groups.FirstOrDefault(x => x.Name == currentName);
-        if (group is not null)
+        if (group is { } g)
         {
-            group.Name = newName;
+            g.Name = newName;
         }
     }
 }

@@ -153,6 +153,10 @@ internal sealed class MountGroupPage
         bool forceMultiseatersInParty = group.ForceMultiseatersInParty;
         bool preferMoreSeats = group.PreferMoreSeats;
         bool forceSingleSeatersWhileSolo = group.ForceSingleSeatersWhileSolo;
+        bool pvpOverride = group.PvpOverrideMultiseaterSettings;
+        bool pvpForceMultiseatersInParty = group.PvpForceMultiseatersInParty;
+        bool pvpPreferMoreSeats = group.PvpPreferMoreSeats;
+        bool pvpForceSingleSeatersWhileSolo = group.PvpForceSingleSeatersWhileSolo;
         bool fastMode = group.FastMode != FastMode.Off;
         bool fastModeAlways = group.FastMode == FastMode.On;
         RouletteDisplayType displayType = group.DisplayType;
@@ -172,6 +176,22 @@ internal sealed class MountGroupPage
 
         _ = ImGui.Checkbox("Use only single-seated mounts while solo", ref forceSingleSeatersWhileSolo);
         ControlHelper.Tooltip("Also applies while in a cross-world party.");
+
+        _ = ImGui.Checkbox("Use different settings for PvP (Frontline and Rival Wings)", ref pvpOverride);
+        ImGui.Indent();
+        ImGui.BeginDisabled(!pvpOverride);
+        _ = ImGui.Checkbox("Use only multi-seated mounts in parties", ref pvpForceMultiseatersInParty);
+
+        ImGui.Indent();
+        ImGui.BeginDisabled(!pvpForceMultiseatersInParty);
+        _ = ImGui.Checkbox("Prefer mounts that can accomodate more party members", ref pvpPreferMoreSeats);
+        ImGui.EndDisabled();
+        ImGui.Unindent();
+
+        _ = ImGui.Checkbox("Use only single-seated mounts while solo", ref pvpForceSingleSeatersWhileSolo);
+
+        ImGui.EndDisabled();
+        ImGui.Unindent();
 
         _ = ImGui.Checkbox("Use highest ground speed mount", ref fastMode);
 
@@ -200,6 +220,10 @@ internal sealed class MountGroupPage
         group.ForceMultiseatersInParty = forceMultiseatersInParty;
         group.PreferMoreSeats = preferMoreSeats;
         group.ForceSingleSeatersWhileSolo = forceSingleSeatersWhileSolo;
+        group.PvpOverrideMultiseaterSettings = pvpOverride;
+        group.PvpForceMultiseatersInParty = pvpForceMultiseatersInParty;
+        group.PvpPreferMoreSeats = pvpPreferMoreSeats;
+        group.PvpForceSingleSeatersWhileSolo = pvpForceSingleSeatersWhileSolo;
         group.FastMode = fastModeAlways ? FastMode.On : fastMode ? FastMode.IfGrounded : FastMode.Off;
     }
 

@@ -150,12 +150,14 @@ internal sealed class MountRegistry(PluginServices services)
             partySize = GroupManager.Instance()->MainGroup.MemberCount;
         }
 
-        if (group.ForceMultiseatersInParty && partySize > 1)
+        MultiseatSettings multiseatSettings = group.GetMultiSeatSettings(_services.ClientState.IsPvP);
+
+        if (multiseatSettings.MultiSeatInParty && partySize > 1)
         {
             // If the largest unlocked mount has more extra seats than other people in the party,
             // only use mounts that can accomodate the entire party. Otherwise use only mounts with
             // the largest available number of seats.
-            int extraSeats = group.PreferMoreSeats
+            int extraSeats = multiseatSettings.PreferMoreSeats
                 ? Math.Min(largestExtraSeatNumber, partySize - 1)
                 : 1;
 
@@ -165,7 +167,7 @@ internal sealed class MountRegistry(PluginServices services)
                 available = withExtraSeats;
             }
         }
-        else if (group.ForceSingleSeatersWhileSolo && partySize <= 1)
+        else if (multiseatSettings.SingleSeatWhileSolo && partySize <= 1)
         {
             List<MountData> withNoExtraSeats = available.FindAll(x => x.ExtraSeats == 0);
             if (withNoExtraSeats.Count > 0)

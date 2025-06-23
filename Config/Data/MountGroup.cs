@@ -2,6 +2,7 @@
 
 using Newtonsoft.Json;
 
+using System;
 using System.Collections.Generic;
 
 internal sealed class MountGroup
@@ -23,6 +24,70 @@ internal sealed class MountGroup
     public RouletteDisplayType DisplayType { get; set; }
 
     public FastMode FastMode { get; set; }
+
+    public bool PvpOverrideMultiseaterSettings { get; set; }
+
+    public bool PvpForceMultiseatersInParty { get; set; }
+
+    public bool PvpPreferMoreSeats { get; set; }
+
+    public bool PvpForceSingleSeatersWhileSolo { get; set; }
+
+    public MultiseatSettings GetMultiSeatSettings(bool isPvp)
+    {
+        if (isPvp && PvpOverrideMultiseaterSettings)
+        {
+            return new MultiseatSettings
+            {
+                MultiSeatInParty = PvpForceMultiseatersInParty,
+                PreferMoreSeats = PvpPreferMoreSeats,
+                SingleSeatWhileSolo = PvpForceSingleSeatersWhileSolo,
+            };
+        }
+
+        return new MultiseatSettings
+        {
+            MultiSeatInParty = ForceMultiseatersInParty,
+            PreferMoreSeats = PreferMoreSeats,
+            SingleSeatWhileSolo = ForceSingleSeatersWhileSolo,
+        };
+    }
+}
+
+public readonly struct MultiseatSettings : IEquatable<MultiseatSettings>
+{
+    public bool MultiSeatInParty { get; init; }
+
+    public bool PreferMoreSeats { get; init; }
+
+    public bool SingleSeatWhileSolo { get; init; }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is MultiseatSettings settings && Equals(settings);
+    }
+
+    public bool Equals(MultiseatSettings other)
+    {
+        return MultiSeatInParty == other.MultiSeatInParty
+            && PreferMoreSeats == other.PreferMoreSeats
+            && SingleSeatWhileSolo == other.SingleSeatWhileSolo;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(MultiSeatInParty, PreferMoreSeats, SingleSeatWhileSolo);
+    }
+
+    public static bool operator ==(MultiseatSettings left, MultiseatSettings right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(MultiseatSettings left, MultiseatSettings right)
+    {
+        return !(left == right);
+    }
 }
 
 public enum FastMode
