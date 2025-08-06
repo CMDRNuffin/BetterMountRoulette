@@ -15,8 +15,6 @@ using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 
-using Iced.Intel;
-
 using Dalamud.Hooking;
 using Dalamud.Utility.Signatures;
 
@@ -129,39 +127,6 @@ internal sealed class GameFunctions : IDisposable
         return (maxSpeed, currentSpeed);
     }
 
-    private static unsafe nint GetStaticAddressFromVFunc(nint vtable, int vfunc, int offset = 0)
-    {
-        // adapted from GetStaticAddressFromSig, see
-        // https://github.com/goatcorp/Dalamud/blob/cddad72066ba45633896b81e38f478bce1aaf674/Dalamud/Game/SigScanner.cs
-        byte* func = *((byte**)vtable + vfunc);
-        try
-        {
-            var reader = new UnsafeCodeReader(func);
-            var decoder = Decoder.Create(64, reader, (ulong)func, DecoderOptions.AMD);
-            while (reader.CanReadByte)
-            {
-                Instruction instruction = decoder.Decode();
-                if (instruction.IsInvalid)
-                {
-                    continue;
-                }
-
-                if (instruction.Op0Kind is OpKind.Memory || instruction.Op1Kind is OpKind.Memory)
-                {
-                    return (IntPtr)instruction.MemoryDisplacement64;
-                }
-            }
-        }
-#pragma warning disable CA1031 // Do not catch general exception types
-        catch
-        {
-            // ignored
-        }
-#pragma warning restore CA1031 // Do not catch general exception types
-
-        return nint.Zero;
-    }
-
     private unsafe void OnActionManagerInitializeCastBar(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex)
     {
         if (chara == Control.GetLocalPlayer()) /* don't bork other players' cast bars */
@@ -259,31 +224,6 @@ internal sealed class GameFunctions : IDisposable
         UpdateActionMenu();
 
         return true;
-    }
-
-    private sealed unsafe class UnsafeCodeReader(byte* address) : CodeReader
-    {
-        private bool _hasEncounteredCC;
-        private readonly byte* _address = address;
-        private int _pos;
-
-        public bool CanReadByte => !_hasEncounteredCC;
-
-        public override int ReadByte()
-        {
-            if (_hasEncounteredCC)
-            {
-                return -1;
-            }
-
-            byte res = *(_address + _pos++);
-            if (res == 0xCC)
-            {
-                _hasEncounteredCC = true;
-            }
-
-            return res;
-        }
     }
 
     private readonly unsafe ref struct FlyingMountRoulette(CSExcelRow* sheet)
