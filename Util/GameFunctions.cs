@@ -46,7 +46,11 @@ internal sealed class GameFunctions : IDisposable
     [Signature("84 D2 0F 84 ?? ?? ?? ?? 4C 8B DC 41 56 48 81 EC 70 01 00 00", Fallibility = Fallibility.Infallible)]
     private readonly unsafe delegate* unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
 
-    [Signature("E8 ?? ?? ?? ?? 41 83 FE 04 0F 84 ?? ?? ?? ??", Fallibility = Fallibility.Infallible)]
+    // For finding it in the future:
+    // ActionManager.UseAction -> ActionManager.UseActionLocation
+    // -> sub_DEADBEEF(this, some_game_object, actionType, actionId, spellId, extraParam, .../* in call, not definition */)
+    // sub_DEADBEEF: if(!inIdleCam && !inGPose && gameMain.instance.(some_field & 0x40000000 == 0 || byte4(some_other_field) >= 0x40u)) ...
+    [Signature("E8 ?? ?? ?? ?? 41 83 FC 04 0F 84 ?? ?? ?? ?? 41 81 FC 5D 4E 00 00", Fallibility = Fallibility.Infallible)]
     private readonly Hook<ActionManagerInitializeCastBarDetour> _actionManagerInitializeCastbarHook;
 
     private readonly AgentMountNoteBookHooks _agentMountNoteBookHooks;
