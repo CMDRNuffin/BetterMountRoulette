@@ -2,7 +2,7 @@
 
 using Dalamud.Interface.Windowing;
 
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 internal abstract class DialogWindow : Window
 {

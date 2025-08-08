@@ -194,6 +194,7 @@ internal sealed class MountRegistry(PluginServices services)
 
     internal IEnumerable<string> GetFastMountNames()
     {
+        InitializeIfNecessary();
         return _fastMountNames ??= _mounts.Where(x => x.IsFast).Select(x => x.Name.ExtractText()).ToArray();
     }
 }

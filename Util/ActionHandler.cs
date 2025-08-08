@@ -48,7 +48,7 @@ internal sealed class ActionHandler : IDisposable
         _displayTypeOverride = null;
 
         if (_services.Condition[ConditionFlag.Mounted]
-            || _services.Condition[ConditionFlag.Mounted2]
+            || _services.Condition[ConditionFlag.RidingPillion]
             || CharacterConfig is not { } characterConfig)
         {
             return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);

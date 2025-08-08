@@ -52,7 +52,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
         WindowManager = new WindowManager(this, _services);
         pluginInterface.UiBuilder.Draw += WindowManager.Draw;
-
         try
         {
             _actionHandler = new ActionHandler(_services, MountRegistry);

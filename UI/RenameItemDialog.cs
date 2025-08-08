@@ -4,7 +4,7 @@ using BetterMountRoulette.UI.Base;
 
 using Dalamud.Interface.Colors;
 
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 using System;
 using System.Diagnostics;
@@ -16,13 +16,13 @@ internal sealed class RenameItemDialog(string title, string initialName, Action<
     private string _name = initialName;
     private readonly Action<string> _onComplete = onComplete;
     private Func<string, bool>? _validateName;
-    private Func<string, string>? _getValidationErrors;
+    private Func<string, ReadOnlySpan<byte>>? _getValidationErrors;
     private static Regex? _normalizeWhitespaceRegex;
 
     public bool AllowEmptyName { get; set; }
     public bool NormalizeWhitespace { get; set; }
 
-    public void SetValidation(Func<string, bool> validate, Func<string, string> getValidationErrors)
+    public void SetValidation(Func<string, bool> validate, Func<string, ReadOnlySpan<byte>> getValidationErrors)
     {
         _validateName = validate;
         _getValidationErrors = getValidationErrors;
@@ -30,13 +30,13 @@ internal sealed class RenameItemDialog(string title, string initialName, Action<
 
     public override void Draw()
     {
-        ImGui.Text("Name:");
+        ImGui.Text("Name:"u8);
         ImGui.SameLine();
-        _ = ImGui.InputText("", ref _name, 1000);
+        _ = ImGui.InputText(""u8, ref _name, 1000);
         bool nameIsInvalid = !ValidateNameImpl();
 
         ImGui.BeginDisabled(nameIsInvalid);
-        if (ImGui.Button("Save"))
+        if (ImGui.Button("Save"u8))
         {
             _onComplete(_name);
             IsOpen = false;
@@ -45,7 +45,7 @@ internal sealed class RenameItemDialog(string title, string initialName, Action<
         ImGui.EndDisabled();
 
         ImGui.SameLine();
-        if (ImGui.Button("Cancel"))
+        if (ImGui.Button("Cancel"u8))
         {
             IsOpen = false;
         }
@@ -56,16 +56,16 @@ internal sealed class RenameItemDialog(string title, string initialName, Action<
         }
     }
 
-    private string GetValidationErrorsImpl()
+    private ReadOnlySpan<byte> GetValidationErrorsImpl()
     {
         Debug.Assert(!ValidateNameImpl(), "GetValidationErrors should only be called if validation failed");
 
         string name = GetNormalizedName();
         return !AllowEmptyName && string.IsNullOrEmpty(name)
-            ? "Please provide a name."
+            ? "Please provide a name."u8
             : _getValidationErrors is { } getValidationErrors
             ? getValidationErrors(name)
-            : "Unknown validation error.";
+            : "Unknown validation error."u8;
     }
 
     private bool ValidateNameImpl()

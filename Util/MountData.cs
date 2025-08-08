@@ -1,5 +1,7 @@
 ﻿namespace BetterMountRoulette.Util;
 
+using Dalamud.Bindings.ImGui;
+
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.Interop;
 
@@ -21,7 +23,7 @@ internal sealed class MountData(TextureHelper textureHelper, ReadOnlySeString na
 
     public bool IsFast { get; set; }
 
-    public nint GetIcon()
+    public ImTextureID GetIcon()
     {
         return _textureHelper.LoadIconTexture(IconID);
     }

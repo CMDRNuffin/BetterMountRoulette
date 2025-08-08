@@ -4,7 +4,7 @@ using BetterMountRoulette.Config;
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 using System;
 using System.Collections.Generic;
@@ -39,7 +39,7 @@ internal sealed class MountGroupPage
     {
         if (group is null)
         {
-            ImGui.Text("Group is null!");
+            ImGui.Text("Group is null!"u8);
             return;
         }
 
@@ -47,9 +47,9 @@ internal sealed class MountGroupPage
         bool isMountsOpen = _mode == MountGroupPageEnum.Mounts;
         bool enableNewMounts = !group.IncludedMeansActive;
 
-        ImGui.GetStateStorage().SetInt(ImGui.GetID("Settings"), isSettingsOpen ? 1 : 0);
+        ImGui.GetStateStorage().SetInt(ImGui.GetID("Settings"u8), isSettingsOpen ? 1 : 0);
         ImGui.BeginDisabled(isSettingsOpen);
-        if (ImGui.CollapsingHeader("Settings"))
+        if (ImGui.CollapsingHeader("Settings"u8))
         {
             ImGui.EndDisabled();
             isSettingsOpen = true;
@@ -63,22 +63,22 @@ internal sealed class MountGroupPage
         List<MountData> unlockedMounts = _plugin.MountRegistry.GetUnlockedMounts();
         UpdateMountSelectionData(group, unlockedMounts, enableNewMounts);
 
-        ImGui.GetStateStorage().SetInt(ImGui.GetID("Mounts"), isMountsOpen ? 1 : 0);
+        ImGui.GetStateStorage().SetInt(ImGui.GetID("Mounts"u8), isMountsOpen ? 1 : 0);
         ImGui.BeginDisabled(isMountsOpen);
-        if (ImGui.CollapsingHeader("Mounts"))
+        if (ImGui.CollapsingHeader("Mounts"u8))
         {
             ImGui.EndDisabled();
             isMountsOpen = true;
             int pages = MountRenderer.GetPageCount(_plugin.MountRegistry.UnlockedMountCount);
             if (pages == 0)
             {
-                ImGui.Text("Please unlock at least one mount.");
+                ImGui.Text("Please unlock at least one mount."u8);
             }
-            else if (ImGui.BeginTabBar("mount_pages"))
+            else if (ImGui.BeginTabBar("mount_pages"u8))
             {
                 for (int page = 1; page <= pages; page++)
                 {
-                    if (ImGui.BeginTabItem($"{page}"))
+                    if (ImGui.BeginTabItem(StringCache.Pages[page , () => $"{page}" ]))
                     {
                         RenderMountListPage(page, group, unlockedMounts);
                         ImGui.EndTabItem();
@@ -117,15 +117,15 @@ internal sealed class MountGroupPage
         _mountRenderer.RenderPage(unlockedMounts, group, page);
 
         int currentPage = page;
-        (bool Select, int? Page)? maybeInfo =
-            ControlHelper.Buttons("Select all", "Unselect all", "Select page", "Unselect page") switch
-            {
-                0 => (true, default(int?)),
-                1 => (false, default(int?)),
-                2 => (true, page),
-                3 => (false, page),
-                _ => default((bool, int?)?),
-            };
+        (bool Select, int? Page)? maybeInfo = null;
+
+        Button("Select all"u8, ref maybeInfo, (true, null));
+        ImGui.SameLine();
+        Button("Unselect all"u8, ref maybeInfo, (false, null));
+        ImGui.SameLine();
+        Button("Select page"u8, ref maybeInfo, (true, page));
+        ImGui.SameLine();
+        Button("Unselect page"u8, ref maybeInfo, (false, page));
 
         if (maybeInfo is { } info)
         {
@@ -146,6 +146,14 @@ internal sealed class MountGroupPage
                     info.Select,
                     info.Page));
         }
+
+        static void Button(ReadOnlySpan<byte> label, ref (bool, int?)? maybeInfo, (bool, int?) value)
+        {
+            if (ImGui.Button(label))
+            {
+                maybeInfo = value;
+            }
+        }
     }
 
     private void RenderGroupSettings(MountGroup group, ref bool enableNewMounts)
@@ -164,55 +172,61 @@ internal sealed class MountGroupPage
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
 
         _ = ImGui.Checkbox("Use only multi-seated mounts in parties", ref forceMultiseatersInParty);
-        ControlHelper.Tooltip("Has no effect on cross-world parties, since those don't allow riding pillion.");
+        ControlHelper.Tooltip("Has no effect on cross-world parties, since those don't allow riding pillion."u8);
 
         ImGui.Indent();
         ImGui.BeginDisabled(!forceMultiseatersInParty);
-        _ = ImGui.Checkbox("Prefer mounts that can accomodate more party members", ref preferMoreSeats);
+        _ = ImGui.Checkbox("Prefer mounts that can accomodate more party members"u8, ref preferMoreSeats);
         ImGui.EndDisabled();
         ImGui.Unindent();
 
-        ControlHelper.Tooltip("Requires the random mount to accomodate the largest number of current party members possible.");
+        ControlHelper.Tooltip("Requires the random mount to accomodate the largest number of current party members possible."u8);
 
-        _ = ImGui.Checkbox("Use only single-seated mounts while solo", ref forceSingleSeatersWhileSolo);
-        ControlHelper.Tooltip("Also applies while in a cross-world party.");
+        _ = ImGui.Checkbox("Use only single-seated mounts while solo"u8, ref forceSingleSeatersWhileSolo);
+        ControlHelper.Tooltip("Also applies while in a cross-world party."u8);
 
-        _ = ImGui.Checkbox("Use different settings for PvP (Frontline and Rival Wings)", ref pvpOverride);
+        _ = ImGui.Checkbox("Use different settings for PvP (Frontline and Rival Wings)"u8, ref pvpOverride);
         ImGui.Indent();
         ImGui.BeginDisabled(!pvpOverride);
-        _ = ImGui.Checkbox("Use only multi-seated mounts in parties", ref pvpForceMultiseatersInParty);
+        _ = ImGui.Checkbox("Use only multi-seated mounts in parties"u8, ref pvpForceMultiseatersInParty);
 
         ImGui.Indent();
         ImGui.BeginDisabled(!pvpForceMultiseatersInParty);
-        _ = ImGui.Checkbox("Prefer mounts that can accomodate more party members", ref pvpPreferMoreSeats);
+        _ = ImGui.Checkbox("Prefer mounts that can accomodate more party members"u8, ref pvpPreferMoreSeats);
         ImGui.EndDisabled();
         ImGui.Unindent();
 
-        _ = ImGui.Checkbox("Use only single-seated mounts while solo", ref pvpForceSingleSeatersWhileSolo);
+        _ = ImGui.Checkbox("Use only single-seated mounts while solo"u8, ref pvpForceSingleSeatersWhileSolo);
 
         ImGui.EndDisabled();
         ImGui.Unindent();
 
-        _ = ImGui.Checkbox("Use highest ground speed mount", ref fastMode);
+        _ = ImGui.Checkbox("Use highest ground speed mount"u8, ref fastMode);
 
-        IEnumerable<string> fastMounts = _plugin.MountRegistry.GetFastMountNames();
+        if (ControlHelper.BeginTooltip())
+        {
+            string GetFastMountsText()
+            {
+                return $"Limits mount selection to {string.Join("/", _plugin.MountRegistry.GetFastMountNames())} in areas where increased";
+            }
 
-        ControlHelper.Tooltip(
-            $"Limits mount selection to {string.Join("/", fastMounts)} in areas where increased\n"
-            + "mount speed is available unless at least the first enhanced level of mount\n"
-            + "speed or flying is unlocked.\n"
-            + "Requires at least one of these mounts to be unlocked and active to take effect.");
+            ImGui.Text(StringCache.Named["FastMountsText", GetFastMountsText]);
+            ImGui.Text("mount speed is available unless at least the first enhanced level of mount"u8);
+            ImGui.Text("speed or flying is unlocked."u8);
+            ImGui.Text("Requires at least one of these mounts to be unlocked and active to take effect."u8);
+            ImGui.EndTooltip();
+        }
 
         ImGui.Indent();
         ImGui.BeginDisabled(!fastMode);
-        _ = ImGui.Checkbox("Always use highest ground speed mount even if flight is unlocked", ref fastModeAlways);
+        _ = ImGui.Checkbox("Always use highest ground speed mount even if flight is unlocked"u8, ref fastModeAlways);
         ImGui.EndDisabled();
         ImGui.Unindent();
 
-        ControlHelper.Tooltip("Limits mount selection regardless of flying unlock status.");
+        ControlHelper.Tooltip("Limits mount selection regardless of flying unlock status."u8);
 
         ImGui.AlignTextToFramePadding();
-        ImGui.Text("/pmount Behavior:");
+        ImGui.Text("/pmount Behavior:"u8);
         ImGui.SameLine();
         SelectDisplayType(ref displayType);
 
@@ -229,7 +243,7 @@ internal sealed class MountGroupPage
 
     private static void SelectDisplayType(ref RouletteDisplayType displayType)
     {
-        if (ImGui.BeginCombo("##displayType", DisplayTypeValue(displayType)))
+        if (ImGui.BeginCombo("##displayType"u8, DisplayTypeValue(displayType)))
         {
             ComboItem(RouletteDisplayType.Grounded, ref displayType);
             ComboItem(RouletteDisplayType.Flying, ref displayType);
@@ -246,14 +260,14 @@ internal sealed class MountGroupPage
             }
         }
 
-        static string DisplayTypeValue(RouletteDisplayType displayType)
+        static ReadOnlySpan<byte> DisplayTypeValue(RouletteDisplayType displayType)
         {
             return displayType switch
             {
-                RouletteDisplayType.Grounded => "Show as Mount Roulette",
-                RouletteDisplayType.Flying => "Show as Flying Mount Roulette",
-                RouletteDisplayType.Show => "Reveal mount during cast",
-                _ => displayType.ToString()
+                RouletteDisplayType.Grounded => "Show as Mount Roulette"u8,
+                RouletteDisplayType.Flying => "Show as Flying Mount Roulette"u8,
+                RouletteDisplayType.Show => "Reveal mount during cast"u8,
+                _ => StringCache.Named[$"RouletteDisplayType_{displayType}", displayType.ToString],
             };
         }
     }
@@ -282,11 +296,11 @@ internal sealed class MountGroupPage
 
         _currentMountGroup ??= characterConfig.Groups.First().Name;
 
-        ControlHelper.SelectItem(characterConfig.Groups, x => x.Name, ref _currentMountGroup, "##currentgroup", 150);
+        ControlHelper.SelectItem(characterConfig.Groups, x => x.Name, ref _currentMountGroup, "##currentgroup"u8, 150);
 
         string currentGroup = _currentMountGroup;
         ImGui.SameLine();
-        if (ImGui.Button("Add"))
+        if (ImGui.Button("Add"u8))
         {
             var dialog = new RenameItemDialog(
                 "Add a new group",
@@ -296,7 +310,7 @@ internal sealed class MountGroupPage
                 NormalizeWhitespace = true
             };
 
-            dialog.SetValidation(x => ValidateGroup(x, isNew: true), x => "A group with that name already exists.");
+            dialog.SetValidation(x => ValidateGroup(x, isNew: true), x => "A group with that name already exists."u8);
             _plugin.WindowManager.OpenDialog(dialog);
         }
 
@@ -311,7 +325,7 @@ internal sealed class MountGroupPage
                 NormalizeWhitespace = true
             };
 
-            dialog.SetValidation(x => ValidateGroup(x, isNew: false), x => "Another group with that name already exists.");
+            dialog.SetValidation(x => ValidateGroup(x, isNew: false), x => "Another group with that name already exists."u8);
 
             _plugin.WindowManager.OpenDialog(dialog);
         }

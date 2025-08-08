@@ -3,7 +3,7 @@
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 using System;
 using System.Collections.Generic;
@@ -68,9 +68,9 @@ internal sealed class MountRenderer(PluginServices services)
 
     public bool Render(MountData mountData, bool enabled)
     {
-        nint selectedUnselectedIcon = _services.TextureHelper.LoadUldTexture("readycheck");
+        ImTextureID selectedUnselectedIcon = _services.TextureHelper.LoadUldTexture("readycheck");
 
-        nint mountIcon = mountData.GetIcon();
+        ImTextureID mountIcon = mountData.GetIcon();
 
         _ = ImGui.TableNextColumn();
 
@@ -95,7 +95,7 @@ internal sealed class MountRenderer(PluginServices services)
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip(mountData.Name.ExtractText());
+            ImGui.SetTooltip(StringCache.Mounts[mountData.ID, mountData.Name.ExtractText]);
         }
 
         Vector2 finalPos = ImGui.GetCursorPos();

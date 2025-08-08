@@ -93,14 +93,12 @@ internal sealed class GameFunctions : IDisposable
             if (territoryType.MountSpeed.IsValid)
             {
                 MountSpeed mountSpeed = territoryType.MountSpeed.Value;
-#pragma warning disable IDE0072 // Add missing cases // exhaustive, adding a default case would be an error
                 maxSpeedUnlockIds = (mountSpeed.Quest.RowId, mountSpeed.Unknown0) switch
                 {
                     (0, _) => null,
                     (uint i, 0) => [i],
                     (uint i, uint j) => [i, j]
                 };
-#pragma warning restore IDE0072 // Add missing cases
             }
 
             _maxSpeedUnlockCache[_services.ClientState.TerritoryType] = maxSpeedUnlockIds;

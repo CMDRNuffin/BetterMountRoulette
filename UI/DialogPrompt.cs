@@ -2,7 +2,7 @@
 
 using BetterMountRoulette.UI.Base;
 
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 internal sealed class DialogPrompt(string title, string text, WindowManager.ButtonConfig[] buttons)
     : DialogWindow(title, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)

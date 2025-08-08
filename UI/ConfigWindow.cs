@@ -5,7 +5,7 @@ using BetterMountRoulette.Util;
 
 using Dalamud.Interface.Windowing;
 
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 
 using Lumina.Excel.Sheets;
 
@@ -21,7 +21,7 @@ internal sealed class ConfigWindow : Window
     private readonly CharacterManagementRenderer _charManagementRenderer;
     private float _windowMinWidth;
 
-    private static string[]? _mainCommands;
+    private static (uint RowId, string Name)[]? _mainCommands;
 
     public ConfigWindow(BetterMountRoulettePlugin plugin, PluginServices services) : base("Better Mount Roulette", ImGuiWindowFlags.AlwaysAutoResize)
     {
@@ -61,18 +61,18 @@ internal sealed class ConfigWindow : Window
     {
         if (_plugin.CharacterConfig is not CharacterConfig characterConfig)
         {
-            ImGui.Text("Please log in first");
+            ImGui.Text("Please log in first"u8);
         }
-        else if (ImGui.BeginTabBar("settings"))
+        else if (ImGui.BeginTabBar("settings"u8))
         {
-            Tab("General", GeneralConfigTab);
-            Tab("Mount Groups", _mountGroupPage.RenderPage);
-            Tab("Character Management", x => _charManagementRenderer.Draw());
+            Tab("General"u8, GeneralConfigTab);
+            Tab("Mount Groups"u8, _mountGroupPage.RenderPage);
+            Tab("Character Management"u8, x => _charManagementRenderer.Draw());
 
             ImGui.EndTabBar();
 
             // Helper method for reducing boilerplate
-            void Tab(string name, Action<CharacterConfig> contentSelector)
+            void Tab(ReadOnlySpan<byte> name, Action<CharacterConfig> contentSelector)
             {
                 if (ImGui.BeginTabItem(name))
                 {
@@ -104,12 +104,12 @@ internal sealed class ConfigWindow : Window
         RouletteGroup(characterConfig, ref mountRouletteGroupName, ref revealMountsNormal);
         RouletteGroup(characterConfig, ref flyingRouletteGroupName, ref revealMountsFlying, isFlying: true);
 
-        ImGui.Text("For an override to take effect, the selected group has to enable at least one mount.");
+        ImGui.Text("For an override to take effect, the selected group has to enable at least one mount."u8);
 
         EnableFlyingRouletteButtonCheckbox(characterConfig);
 
         bool suppressChatErrors = characterConfig.SuppressChatErrors;
-        _ = ImGui.Checkbox("Suppress error messages in chat", ref suppressChatErrors);
+        _ = ImGui.Checkbox("Suppress error messages in chat"u8, ref suppressChatErrors);
 
         characterConfig.MountRouletteGroup = mountRouletteGroupName;
         characterConfig.FlyingMountRouletteGroup = flyingRouletteGroupName;
@@ -124,7 +124,7 @@ internal sealed class ConfigWindow : Window
     private void EnableFlyingRouletteButtonCheckbox(CharacterConfig characterConfig)
     {
         bool enableFlyingRouletteButton = characterConfig.EnableFlyingRouletteButton;
-        if (ImGui.Checkbox("Re-enable Flying Mount Roulette button", ref enableFlyingRouletteButton))
+        if (ImGui.Checkbox("Re-enable Flying Mount Roulette button"u8, ref enableFlyingRouletteButton))
         {
             characterConfig.EnableFlyingRouletteButton = enableFlyingRouletteButton;
             _ = _services.Framework.RunOnFrameworkThread(() => _services.GameFunctions.ToggleFlyingRouletteButton(enableFlyingRouletteButton));
@@ -132,28 +132,30 @@ internal sealed class ConfigWindow : Window
 
         if (ImGui.IsItemHovered())
         {
-            _mainCommands ??= _services.DataManager.GetExcelSheet<MainCommand>()!.Where(x => x.RowId is 3 or 61).Select(x => x.Name.ToString()).ToArray();
+            _mainCommands ??= _services.DataManager.GetExcelSheet<MainCommand>()!
+                .Where(x => x.RowId is 3 or 61).Select(x => (x.RowId, x.Name.ExtractText()))
+                .ToArray();
 
             ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, ImGui.GetStyle().ItemSpacing.Y));
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.BeginTooltip();
 
-                ImGui.Text("Flying Mount Roulette is available from the ");
+                ImGui.Text("Flying Mount Roulette is available from the "u8);
                 ImGui.SameLine();
                 for (int i = 0; i < _mainCommands.Length; i++)
                 {
-                    ImGui.TextColored(new Vector4(0.5f, 0.5f, 1f, 1), _mainCommands[i]);
+                    ImGui.TextColored(new Vector4(0.5f, 0.5f, 1f, 1), StringCache.MainCommands[_mainCommands[i].RowId, () => _mainCommands[i].Name]);
                     ImGui.SameLine();
 
                     if (i < _mainCommands.Length - 1)
                     {
-                        ImGui.Text(" and ");
+                        ImGui.Text(" and "u8);
                         ImGui.SameLine();
                     }
                 }
 
-                ImGui.Text(" windows");
+                ImGui.Text(" windows"u8);
                 ImGui.EndTooltip();
             }
 
@@ -173,10 +175,10 @@ internal sealed class ConfigWindow : Window
 
         if (ImGui.BeginChildFrame(isFlying ? 2u : 1u, new Vector2(0, totalHeight)))
         {
-            if (ImGui.BeginTable($"##roulettegroup_{(isFlying ? "f" : "g")}", 2))
+            if (ImGui.BeginTable(RouletteGroupID(isFlying), 2))
             {
-                ImGui.TableSetupColumn("##icon", ImGuiTableColumnFlags.WidthFixed, contentHeight);
-                ImGui.TableSetupColumn("##settings", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("##icon"u8, ImGuiTableColumnFlags.WidthFixed, contentHeight);
+                ImGui.TableSetupColumn("##settings"u8, ImGuiTableColumnFlags.WidthStretch);
 
                 _ = ImGui.TableNextColumn();
 
@@ -186,7 +188,7 @@ internal sealed class ConfigWindow : Window
 
                 SelectRouletteGroup(characterConfig, ref groupName, isFlying);
 
-                _ = ImGui.Checkbox("Reveal mount in cast bar", ref show);
+                _ = ImGui.Checkbox("Reveal mount in cast bar"u8, ref show);
 
                 ImGui.EndTable();
             }
@@ -195,11 +197,18 @@ internal sealed class ConfigWindow : Window
         }
     }
 
+    private static ReadOnlySpan<byte> RouletteGroupID(bool isFlying)
+    {
+        return isFlying
+            ? "##roulettegroup_f"u8
+            : "##roulettegroup_g"u8;
+    }
+
     private static void SelectRouletteGroup(CharacterConfig characterConfig, ref string? groupName, bool isFlying = false)
     {
         bool isEnabled = groupName is not null;
 
-        _ = ImGui.Checkbox($"Replace with mount group", ref isEnabled);
+        _ = ImGui.Checkbox("Replace with mount group"u8, ref isEnabled);
 
         if (isEnabled)
         {
@@ -222,7 +231,7 @@ internal sealed class ConfigWindow : Window
                 config.Groups,
                 x => x.Name,
                 ref group,
-                $"##roulettegroup_{(isFlying ? "f" : "g")}",
+                RouletteGroupID(isFlying),
                 100);
         }
     }
