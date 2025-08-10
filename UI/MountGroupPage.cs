@@ -171,7 +171,7 @@ internal sealed class MountGroupPage
 
         _ = ImGui.Checkbox("Enable new mounts on unlock", ref enableNewMounts);
 
-        _ = ImGui.Checkbox("Use only multi-seated mounts in parties", ref forceMultiseatersInParty);
+        _ = ImGui.Checkbox("Use only multi-seated mounts in parties"u8, ref forceMultiseatersInParty);
         ControlHelper.Tooltip("Has no effect on cross-world parties, since those don't allow riding pillion."u8);
 
         ImGui.Indent();
@@ -188,6 +188,7 @@ internal sealed class MountGroupPage
         _ = ImGui.Checkbox("Use different settings for PvP (Frontline and Rival Wings)"u8, ref pvpOverride);
         ImGui.Indent();
         ImGui.BeginDisabled(!pvpOverride);
+        ImGui.PushID(1);
         _ = ImGui.Checkbox("Use only multi-seated mounts in parties"u8, ref pvpForceMultiseatersInParty);
 
         ImGui.Indent();
@@ -198,6 +199,7 @@ internal sealed class MountGroupPage
 
         _ = ImGui.Checkbox("Use only single-seated mounts while solo"u8, ref pvpForceSingleSeatersWhileSolo);
 
+        ImGui.PopID();
         ImGui.EndDisabled();
         ImGui.Unindent();
 
