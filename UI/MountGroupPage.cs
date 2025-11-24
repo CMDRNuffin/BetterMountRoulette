@@ -5,6 +5,10 @@ using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
+using Dalamud.Interface.Components;
+using Dalamud.Interface.Utility.Raii;
+using Dalamud.Utility;
 
 using System;
 using System.Collections.Generic;
@@ -16,6 +20,7 @@ internal sealed class MountGroupPage
     private readonly MountRenderer _mountRenderer;
     private string? _currentMountGroup;
     private MountGroupPageEnum _mode = MountGroupPageEnum.Settings;
+    private string _nameFilter = "";
 
     private enum MountGroupPageEnum
     {
@@ -69,7 +74,12 @@ internal sealed class MountGroupPage
         {
             ImGui.EndDisabled();
             isMountsOpen = true;
-            int pages = MountRenderer.GetPageCount(_plugin.MountRegistry.UnlockedMountCount);
+
+            DrawNameFilter();
+
+            List<MountData> filteredAndUnlockedMounts = GetFilteredMounts(unlockedMounts);
+
+            int pages = MountRenderer.GetPageCount(filteredAndUnlockedMounts.Count);
             if (pages == 0)
             {
                 ImGui.Text("Please unlock at least one mount."u8);
@@ -78,9 +88,9 @@ internal sealed class MountGroupPage
             {
                 for (int page = 1; page <= pages; page++)
                 {
-                    if (ImGui.BeginTabItem(StringCache.Pages[page , () => $"{page}" ]))
+                    if (ImGui.BeginTabItem(StringCache.Pages[page, () => $"{page}"]))
                     {
-                        RenderMountListPage(page, group, unlockedMounts);
+                        RenderMountListPage(page, group, filteredAndUnlockedMounts);
                         ImGui.EndTabItem();
                     }
                 }
@@ -112,11 +122,32 @@ internal sealed class MountGroupPage
         }
     }
 
-    private void RenderMountListPage(int page, MountGroup group, List<MountData> unlockedMounts)
+    private void DrawNameFilter()
     {
-        _mountRenderer.RenderPage(unlockedMounts, group, page);
+        ImGui.SetNextItemWidth(250);
+        // Returned boolean for when the input changed can be ignored,
+        // as _nameFilter is directly changed per reference.
+        _ = ImGui.InputTextWithHint("###nameFilter"u8, "Search for name..."u8, ref _nameFilter);
 
-        int currentPage = page;
+        ImGui.SameLine();
+        if (ImGuiComponents.IconButton(FontAwesomeIcon.FilterCircleXmark))
+        {
+            _nameFilter = "";
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            using (ImRaii.Tooltip())
+            {
+                ImGui.SetTooltip("Clear name filter"u8);
+            }
+        }
+    }
+
+    private void RenderMountListPage(int page, MountGroup group, List<MountData> unlockedAndFilteredMounts)
+    {
+        _mountRenderer.RenderPage(unlockedAndFilteredMounts, group, page);
+
         (bool Select, int? Page)? maybeInfo = null;
 
         Button("Select all"u8, ref maybeInfo, (true, null));
@@ -141,10 +172,13 @@ internal sealed class MountGroupPage
                 "Are you sure?",
                 $"Do you really want to {selectText} all {pageInfo}?",
                 () => MountRenderer.Update(
-                    _plugin.MountRegistry.GetUnlockedMounts(),
+                    // todo discuss whether it is intended, when "Select all" is used, it will only add the ones shown from filter
+                    unlockedAndFilteredMounts,
                     group,
                     info.Select,
-                    info.Page));
+                    info.Page
+                )
+            );
         }
 
         static void Button(ReadOnlySpan<byte> label, ref (bool, int?)? maybeInfo, (bool, int?) value)
@@ -180,7 +214,9 @@ internal sealed class MountGroupPage
         ImGui.EndDisabled();
         ImGui.Unindent();
 
-        ControlHelper.Tooltip("Requires the random mount to accomodate the largest number of current party members possible."u8);
+        ControlHelper.Tooltip(
+            "Requires the random mount to accomodate the largest number of current party members possible."u8
+        );
 
         _ = ImGui.Checkbox("Use only single-seated mounts while solo"u8, ref forceSingleSeatersWhileSolo);
         ControlHelper.Tooltip("Also applies while in a cross-world party."u8);
@@ -209,7 +245,8 @@ internal sealed class MountGroupPage
         {
             string GetFastMountsText()
             {
-                return $"Limits mount selection to {string.Join("/", _plugin.MountRegistry.GetFastMountNames())} in areas where increased";
+                return
+                    $"Limits mount selection to {string.Join("/", _plugin.MountRegistry.GetFastMountNames())} in areas where increased";
             }
 
             ImGui.Text(StringCache.Named["FastMountsText", GetFastMountsText]);
@@ -240,7 +277,22 @@ internal sealed class MountGroupPage
         group.PvpForceMultiseatersInParty = pvpForceMultiseatersInParty;
         group.PvpPreferMoreSeats = pvpPreferMoreSeats;
         group.PvpForceSingleSeatersWhileSolo = pvpForceSingleSeatersWhileSolo;
-        group.FastMode = fastModeAlways ? FastMode.On : fastMode ? FastMode.IfGrounded : FastMode.Off;
+        group.FastMode = fastModeAlways
+            ? FastMode.On
+            : fastMode
+                ? FastMode.IfGrounded
+                : FastMode.Off;
+    }
+
+    private List<MountData> GetFilteredMounts(List<MountData> unlockedMounts)
+    {
+        return _nameFilter.IsNullOrEmpty()
+            ? unlockedMounts
+            : unlockedMounts
+                .Where((mountData) =>
+                    mountData.Name.ExtractText().Contains(_nameFilter, StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
     }
 
     private static void SelectDisplayType(ref RouletteDisplayType displayType)
@@ -307,10 +359,8 @@ internal sealed class MountGroupPage
             var dialog = new RenameItemDialog(
                 "Add a new group",
                 string.Empty,
-                x => AddMountGroup(characterConfig, x))
-            {
-                NormalizeWhitespace = true
-            };
+                x => AddMountGroup(characterConfig, x)
+            ) { NormalizeWhitespace = true };
 
             dialog.SetValidation(x => ValidateGroup(x, isNew: true), x => "A group with that name already exists."u8);
             _plugin.WindowManager.OpenDialog(dialog);
@@ -322,12 +372,13 @@ internal sealed class MountGroupPage
             var dialog = new RenameItemDialog(
                 $"Rename {_currentMountGroup}",
                 _currentMountGroup,
-                (newName) => RenameMountGroup(_currentMountGroup, newName))
-            {
-                NormalizeWhitespace = true
-            };
+                (newName) => RenameMountGroup(_currentMountGroup, newName)
+            ) { NormalizeWhitespace = true };
 
-            dialog.SetValidation(x => ValidateGroup(x, isNew: false), x => "Another group with that name already exists."u8);
+            dialog.SetValidation(
+                x => ValidateGroup(x, isNew: false),
+                x => "Another group with that name already exists."u8
+            );
 
             _plugin.WindowManager.OpenDialog(dialog);
         }
@@ -340,7 +391,8 @@ internal sealed class MountGroupPage
                 "Confirm deletion of mount group",
                 $"Are you sure you want to delete {currentGroup}?\nThis action can NOT be undone.",
                 ("OK", () => DeleteMountGroup(currentGroup)),
-                "Cancel");
+                "Cancel"
+            );
         }
 
         ImGui.EndDisabled();
@@ -354,7 +406,10 @@ internal sealed class MountGroupPage
                 return false;
             }
 
-            HashSet<string> names = new(characterConfig.Groups.Select(x => x.Name), StringComparer.InvariantCultureIgnoreCase);
+            HashSet<string> names = new(
+                characterConfig.Groups.Select(x => x.Name),
+                StringComparer.InvariantCultureIgnoreCase
+            );
 
             if (!isNew)
             {
