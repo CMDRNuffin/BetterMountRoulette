@@ -7,6 +7,7 @@ using Dalamud.Bindings.ImGui;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 
@@ -95,7 +96,12 @@ internal sealed class MountRenderer(PluginServices services)
 
         if (ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip(StringCache.Mounts[mountData.ID, mountData.Name.ExtractText]);
+            ImGui.SetTooltip(
+                StringCache.Mounts[
+                    mountData.ID,
+                    () => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(mountData.Name.ExtractText())
+                ]
+            );
         }
 
         Vector2 finalPos = ImGui.GetCursorPos();
