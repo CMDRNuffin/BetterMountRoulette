@@ -48,6 +48,10 @@
     <WarningLevel>9999</WarningLevel>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <WarningsNotAsErrors>CS0618</WarningsNotAsErrors>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Update="BetterMountRoulette.yaml">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
