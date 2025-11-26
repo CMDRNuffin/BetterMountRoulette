@@ -173,8 +173,12 @@ internal sealed class MountGroupPage : IDisposable
             string selectText = info.Select ? "select" : "unselect";
             string pageInfo = (info.Page, info.Select) switch
             {
-                (null, true) => "currently unselected mounts",
-                (null, false) => "currently selected mounts",
+                (null, true) => _nameFilter.IsNullOrEmpty()
+                    ? "currently unselected mounts"
+                    : $"unselected mounts matching \"{_nameFilter}\"",
+                (null, false) => _nameFilter.IsNullOrEmpty()
+                    ? "currently selected mounts"
+                    : $"selected mounts matching \"{_nameFilter}\"",
                 _ => "mounts on the current page",
             };
 
@@ -182,7 +186,6 @@ internal sealed class MountGroupPage : IDisposable
                 "Are you sure?",
                 $"Do you really want to {selectText} all {pageInfo}?",
                 () => MountRenderer.Update(
-                    // todo discuss whether it is intended, when "Select all" is used, it will only add the ones shown from filter
                     unlockedAndFilteredMounts,
                     group,
                     info.Select,
