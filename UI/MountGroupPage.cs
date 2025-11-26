@@ -78,7 +78,10 @@ internal sealed class MountGroupPage : IDisposable
             ImGui.EndDisabled();
             isMountsOpen = true;
 
-            DrawNameFilter();
+            if (unlockedMounts.Count > 0)
+            {
+                DrawNameFilter();
+            }
 
             List<MountData> filteredAndUnlockedMounts = GetFilteredMounts(unlockedMounts);
 
@@ -86,7 +89,7 @@ internal sealed class MountGroupPage : IDisposable
             if (pages == 0)
             {
                 ImGui.Text(
-                    _nameFilter.IsNullOrEmpty()
+                    unlockedMounts.Count == 0
                         ? "Please unlock at least one mount."u8
                         : "No mounts match the current filter."u8
                 );
