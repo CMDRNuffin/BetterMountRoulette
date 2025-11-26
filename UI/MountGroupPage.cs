@@ -88,7 +88,7 @@ internal sealed class MountGroupPage : IDisposable
                 ImGui.Text(
                     _nameFilter.IsNullOrEmpty()
                         ? "Please unlock at least one mount."u8
-                        : $"No mounts found for filter \"{_nameFilter}\"."
+                        : "No mounts match the current filter."u8
                 );
             }
             else if (ImGui.BeginTabBar("mount_pages"u8))
