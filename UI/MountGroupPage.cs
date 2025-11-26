@@ -175,10 +175,10 @@ internal sealed class MountGroupPage : IDisposable
             {
                 (null, true) => _nameFilter.IsNullOrEmpty()
                     ? "currently unselected mounts"
-                    : $"unselected mounts matching \"{_nameFilter}\"",
+                    : $"mounts matching \"{_nameFilter}\"",
                 (null, false) => _nameFilter.IsNullOrEmpty()
                     ? "currently selected mounts"
-                    : $"selected mounts matching \"{_nameFilter}\"",
+                    : $"mounts matching \"{_nameFilter}\"",
                 _ => "mounts on the current page",
             };
 
