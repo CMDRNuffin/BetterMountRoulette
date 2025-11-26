@@ -218,6 +218,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             if (disposing)
             {
                 // TODO: dispose managed state (managed objects)
+                WindowManager.Dispose();
             }
 
             SaveConfig(Configuration);

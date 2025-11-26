@@ -13,7 +13,7 @@ using System;
 using System.Linq;
 using System.Numerics;
 
-internal sealed class ConfigWindow : Window
+internal sealed class ConfigWindow : Window, IDisposable
 {
     private readonly BetterMountRoulettePlugin _plugin;
     private readonly PluginServices _services;
@@ -234,5 +234,10 @@ internal sealed class ConfigWindow : Window
                 RouletteGroupID(isFlying),
                 100);
         }
+    }
+
+    public void Dispose()
+    {
+        _mountGroupPage.Dispose();
     }
 }
