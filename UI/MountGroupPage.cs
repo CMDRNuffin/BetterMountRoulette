@@ -85,7 +85,11 @@ internal sealed class MountGroupPage : IDisposable
             int pages = MountRenderer.GetPageCount(filteredAndUnlockedMounts.Count);
             if (pages == 0)
             {
-                ImGui.Text("Please unlock at least one mount."u8);
+                ImGui.Text(
+                    _nameFilter.IsNullOrEmpty()
+                        ? "Please unlock at least one mount."u8
+                        : $"No mounts found for filter \"{_nameFilter}\"."
+                );
             }
             else if (ImGui.BeginTabBar("mount_pages"u8))
             {
@@ -299,11 +303,12 @@ internal sealed class MountGroupPage : IDisposable
                 cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1);
-                    
+
                     return _nameFilter.IsNullOrEmpty()
                         ? unlockedMounts
                         : unlockedMounts
-                            .Where(mountData => mountData.Name.ExtractText().Contains(
+                            .Where(mountData => mountData.Name.ExtractText()
+                                .Contains(
                                     _nameFilter,
                                     StringComparison.OrdinalIgnoreCase
                                 )
