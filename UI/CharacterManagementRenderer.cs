@@ -54,7 +54,7 @@ internal sealed class CharacterManagementRenderer(
         }
 
         ImGui.EndListBox();
-        ImGui.BeginDisabled(_currentCharacter is null || _currentCharacter == _services.ClientState.LocalContentId);
+        ImGui.BeginDisabled(_currentCharacter is null || _currentCharacter == _services.PlayerState.ContentId);
 
         if (ImGui.Button("Import"))
         {
@@ -86,7 +86,7 @@ internal sealed class CharacterManagementRenderer(
             ImGui.SameLine();
             ImGui.Text("This configuration cannot be deleted."u8);
         }
-        else if (_currentCharacter == _services.ClientState.LocalContentId)
+        else if (_currentCharacter == _services.PlayerState.ContentId)
         {
             ImGui.SameLine();
             ImGui.Text("You cannot import from or delete the currently active character."u8);

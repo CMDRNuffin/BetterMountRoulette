@@ -3,7 +3,6 @@
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
-using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Plugin.Services;
 
 using Newtonsoft.Json;
@@ -21,7 +20,7 @@ internal sealed class CharacterManager(PluginServices services, Configuration co
 
     private IPluginLog PluginLog => _services.PluginLog;
 
-    public CharacterConfig GetCharacterConfig(ulong playerID, IPlayerCharacter character)
+    public CharacterConfig GetCharacterConfig(ulong playerID)
     {
         if (_characterConfig is { } cfg && playerID == _playerID)
         {
@@ -40,8 +39,8 @@ internal sealed class CharacterManager(PluginServices services, Configuration co
             _characterConfig = CreateCharacterConfig();
             cce = new CharacterConfigEntry
             {
-                CharacterName = character.Name.TextValue,
-                CharacterWorld = character.HomeWorld.Value.Name.ExtractText() ?? "",
+                CharacterName = _services.PlayerState.CharacterName,
+                CharacterWorld = _services.PlayerState.HomeWorld.Value.Name.ExtractText() ?? "",
             };
 
             cce.FileName = $"{playerID}_{cce.CharacterName.Replace(' ', '_')}@{cce.CharacterWorld}.json";
