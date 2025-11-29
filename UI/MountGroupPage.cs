@@ -14,16 +14,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using Microsoft.Extensions.Caching.Memory;
-
-internal sealed class MountGroupPage : IDisposable
+internal sealed class MountGroupPage
 {
     private readonly BetterMountRoulettePlugin _plugin;
     private readonly MountRenderer _mountRenderer;
     private string? _currentMountGroup;
     private MountGroupPageEnum _mode = MountGroupPageEnum.Settings;
+
     private string _nameFilter = "";
-    private readonly MemoryCache _cache = new(new MemoryCacheOptions());
+    private List<MountData>? _filteredMounts;
+    private (int UnlockedCount, string Text) _lastFilter;
 
     private enum MountGroupPageEnum
     {
@@ -83,7 +83,7 @@ internal sealed class MountGroupPage : IDisposable
                 DrawNameFilter();
             }
 
-            List<MountData> filteredAndUnlockedMounts = GetFilteredMounts(unlockedMounts);
+            List<MountData> filteredAndUnlockedMounts = ApplyFilterAndGetFilteredMounts(unlockedMounts);
 
             int pages = MountRenderer.GetPageCount(filteredAndUnlockedMounts.Count);
             if (pages == 0)
@@ -300,33 +300,26 @@ internal sealed class MountGroupPage : IDisposable
                 : FastMode.Off;
     }
 
-    private List<MountData> GetFilteredMounts(List<MountData> unlockedMounts)
+    private List<MountData> ApplyFilterAndGetFilteredMounts(List<MountData> unlockedMounts)
     {
-        (int UnlockedMountsCount, string FilterText) cacheKey = (unlockedMounts.Count, _nameFilter);
+        if (string.IsNullOrEmpty(_nameFilter))
+        {
+            return unlockedMounts;
+        }
 
-        List<MountData> results = _cache.GetOrCreate(
-                cacheKey,
-                cacheEntry =>
-                {
-                    cacheEntry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1);
+        if (_filteredMounts is null
+            || unlockedMounts.Count != _lastFilter.UnlockedCount
+            || !_nameFilter.Equals(_lastFilter.Text, StringComparison.OrdinalIgnoreCase))
+        {
+            _filteredMounts = unlockedMounts.Where(mountData =>
+                    mountData.Name.ExtractText().Contains(_nameFilter, StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
+        }
 
-                    return _nameFilter.IsNullOrEmpty()
-                        ? unlockedMounts
-                        : unlockedMounts
-                            .Where(mountData => mountData.Name.ExtractText()
-                                .Contains(
-                                    _nameFilter,
-                                    StringComparison.OrdinalIgnoreCase
-                                )
-                            )
-                            .ToList();
-                }
-            )
-            ?? throw new InvalidOperationException(
-                "Cache entry was null which should be impossible."
-            );
+        _lastFilter = (UnlockedCount: unlockedMounts.Count, Text: _nameFilter);
 
-        return results;
+        return _filteredMounts;
     }
 
     private static void SelectDisplayType(ref RouletteDisplayType displayType)
@@ -488,10 +481,5 @@ internal sealed class MountGroupPage : IDisposable
     {
         characterConfig.Groups.Add(new MountGroup { Name = name });
         _currentMountGroup = name;
-    }
-
-    public void Dispose()
-    {
-        _cache.Dispose();
     }
 }

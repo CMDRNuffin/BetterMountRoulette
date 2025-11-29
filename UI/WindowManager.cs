@@ -10,12 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage(
-    "Microsoft.Usage",
-    "CA2213:DisposableFieldsShouldBeDisposed",
-    Justification = "Plugin and services are owned/disposed externally."
-)]
-internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServices services) : IDisposable
+internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServices services)
 {
     private readonly BetterMountRoulettePlugin _plugin = plugin;
     private readonly PluginServices _services = services;
@@ -67,10 +62,11 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
             return;
         }
 
-        // Is disposed via a loop over all windows.
-#pragma warning disable CA2000
-        configWindow = new ConfigWindow(_plugin, _services) { IsOpen = true };
-#pragma warning restore CA2000
+        configWindow = new ConfigWindow(_plugin, _services)
+        {
+            IsOpen = true
+        };
+
         Add(configWindow);
     }
 
@@ -163,17 +159,6 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
         public void Add(Window window)
         {
             _windows.AddWindow(window);
-        }
-    }
-
-    public void Dispose()
-    {
-        foreach (Window window in _windows.Windows)
-        {
-            if (window is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
         }
     }
 }
