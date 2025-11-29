@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.Sdk/13.0.0">
+<Project Sdk="Dalamud.NET.Sdk/13.1.0">
   <PropertyGroup>
     <Description>todo.</Description>
     <PackageProjectUrl>https://github.com/CMDRNuffin/BetterMountRoulette</PackageProjectUrl>
@@ -48,14 +48,15 @@
     <WarningLevel>9999</WarningLevel>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <WarningsNotAsErrors>CS0618</WarningsNotAsErrors>
-  </PropertyGroup>
-
   <ItemGroup>
     <None Update="BetterMountRoulette.yaml">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="DalamudPackager" Version="13.1.0" />
+    <PackageReference Update="DotNet.ReproducibleBuilds" Version="1.2.39" />
   </ItemGroup>
 
   <ItemGroup>
