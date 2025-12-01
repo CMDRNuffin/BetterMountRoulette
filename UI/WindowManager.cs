@@ -4,7 +4,6 @@ using BetterMountRoulette.UI.Base;
 using BetterMountRoulette.Util;
 
 using Dalamud.Interface.Windowing;
-
 using Dalamud.Bindings.ImGui;
 
 using System;
