@@ -20,7 +20,7 @@ using Dalamud.Utility.Signatures;
 
 using CSExcelRow = FFXIVClientStructs.FFXIV.Component.Excel.ExcelRow;
 
-public enum MountRouletteOverride
+internal enum MountRouletteOverride : uint
 {
     PlainMount = 0,
     NormalRoulette = 1,
@@ -38,32 +38,29 @@ internal sealed class GameFunctions : IDisposable
     private bool _disposedValue;
 
     // For finding it in the future:
-    // for ( i = 1; i < 0x2B; ++i )
+    // for ( i = 1; i < 0x2D; ++i )
     // {
     //     GeneralActionRow_1 = Component::Exd::ExdModule_GetGeneralActionRow_1(i);
     [Signature("84 D2 0F 84 ?? ?? ?? ?? 4C 8B DC 41 56 48 81 EC 70 01 00 00", Fallibility = Fallibility.Infallible)]
     private readonly unsafe delegate* unmanaged<AgentActionMenu*, bool, void> _agentActionMenuLoadActions;
 
-    // For finding it in the future:
-    // ActionManager.UseAction -> ActionManager.UseActionLocation
-    // -> sub_DEADBEEF(this, some_game_object, actionType, actionId, spellId, extraParam, .../* in call, not definition */)
-    // sub_DEADBEEF: if(!inIdleCam && !inGPose && gameMain.instance.(some_field & 0x40000000 == 0 || byte4(some_other_field) >= 0x40u)) ...
-    [Signature("E8 ?? ?? ?? ?? 41 83 FC 04 0F 84 ?? ?? ?? ?? 41 81 FC 5D 4E 00 00", Fallibility = Fallibility.Infallible)]
-    private readonly Hook<ActionManagerInitializeCastBarDetour> _actionManagerInitializeCastbarHook;
+    private readonly Hook<ActionManager.Delegates.OpenCastBar> _actionManagerOpenCastbarHook;
 
     private readonly AgentMountNoteBookHooks _agentMountNoteBookHooks;
 
     private unsafe delegate void AgentActionMenuLoadActionsDetour(AgentActionMenu* @this, bool reload);
-    private unsafe delegate void ActionManagerInitializeCastBarDetour(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex);
 
     public unsafe GameFunctions(PluginServices services)
     {
         _services = services;
         _agentActionMenuLoadActions = null;
-        _actionManagerInitializeCastbarHook = null!;
+        _actionManagerOpenCastbarHook = null!;
         services.GameInteropProvider.InitializeFromAttributes(this);
 
-        _actionManagerInitializeCastbarHook.Enable();
+        _actionManagerOpenCastbarHook = services.GameInteropProvider.HookFromAddress<ActionManager.Delegates.OpenCastBar>(
+            (nint)ActionManager.MemberFunctionPointers.OpenCastBar,
+            OnActionManagerOpenCastBar);
+        _actionManagerOpenCastbarHook.Enable();
 
         UpdateActionMenu();
 
@@ -125,19 +122,19 @@ internal sealed class GameFunctions : IDisposable
         return (maxSpeed, currentSpeed);
     }
 
-    private unsafe void OnActionManagerInitializeCastBar(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, int mountRouletteIndex)
+    private unsafe void OnActionManagerOpenCastBar(ActionManager* @this, BattleChara* chara, ActionType actionType, uint actionId, uint spellId, uint mountRouletteIndex, float castTimeElapsed, float castTimeTotal)
     {
         if (chara == Control.GetLocalPlayer()) /* don't bork other players' cast bars */
         {
             // mount roulettes are normalized to action type = mount; action id = mount id; mount roulette index = 1 for normal, 2 for flying
             if (actionType == ActionType.Mount && NextMountRouletteOverride is { } rouletteOverride)
             {
-                mountRouletteIndex = (int)rouletteOverride;
+                mountRouletteIndex = (uint)rouletteOverride;
                 NextMountRouletteOverride = null;
             }
         }
 
-        _actionManagerInitializeCastbarHook.Original(@this, chara, actionType, actionId, spellId, mountRouletteIndex);
+        _actionManagerOpenCastbarHook.Original(@this, chara, actionType, actionId, spellId, mountRouletteIndex, castTimeElapsed, castTimeTotal);
     }
 
     private unsafe void UpdateActionMenu()
@@ -147,7 +144,7 @@ internal sealed class GameFunctions : IDisposable
             AgentActionMenu* agentActionMenu = AgentModule.Instance()->GetAgentActionMenu();
             if (agentActionMenu->GeneralList.Count > 0)
             {
-                // refresh action menu to add the flying mount roulette
+                // refresh action menu to add/remove the flying mount roulette
                 _agentActionMenuLoadActions(agentActionMenu, true);
             }
         }
@@ -166,7 +163,7 @@ internal sealed class GameFunctions : IDisposable
             _ = _services.Framework.RunOnFrameworkThread(() => ToggleFlyingRouletteButton(false));
 
             _agentMountNoteBookHooks.Dispose();
-            _actionManagerInitializeCastbarHook.Dispose();
+            _actionManagerOpenCastbarHook.Dispose();
 
             _disposedValue = true;
         }

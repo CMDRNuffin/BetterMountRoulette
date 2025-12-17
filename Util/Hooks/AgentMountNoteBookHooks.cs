@@ -11,15 +11,10 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
 {
     private bool _disposedValue;
     private readonly PluginServices _services;
-    private readonly Hook<AgentMountNoteBookUseRouletteDetour> _agentMountNoteBookUseRouletteHook;
-    private readonly Hook<AgentMountNoteBookGetRouletteIconDetour> _agentMountNoteBookGetRouletteIconHook;
-    private readonly Hook<AgentMountNoteBookGetRouletteActionIdDetour> _agentMountNoteBookGetRouletteActionIdHook;
-    private readonly Hook<AgentMountNoteBookIsRouletteAvailableDetour> _agentMountNoteBookIsRouletteAvailableHook;
-
-    private unsafe delegate bool AgentMountNoteBookUseRouletteDetour(AgentInterface* @this, uint rouletteIndex);
-    private unsafe delegate uint AgentMountNoteBookGetRouletteIconDetour(AgentInterface* @this, uint rouletteIndex);
-    private unsafe delegate uint AgentMountNoteBookGetRouletteActionIdDetour(AgentInterface* @this, uint rouletteIndex);
-    private unsafe delegate bool AgentMountNoteBookIsRouletteAvailableDetour(AgentInterface* @this, uint rouletteIndex);
+    private readonly Hook<Delegates.UseRoulette> _agentMountNoteBookUseRouletteHook;
+    private readonly Hook<Delegates.GetRouletteIcon> _agentMountNoteBookGetRouletteIconHook;
+    private readonly Hook<Delegates.GetRouletteActionId> _agentMountNoteBookGetRouletteActionIdHook;
+    private readonly Hook<Delegates.CanUseRoulette> _agentMountNoteBookIsRouletteAvailableHook;
 
     public unsafe AgentMountNoteBookHooks(PluginServices services)
     {
@@ -27,18 +22,18 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
 
         AgentInterface* agent = AgentModule.Instance()->GetAgentByInternalId(AgentId.MountNotebook);
         var vtable = (AgentMountNoteBookVTable*)agent->VirtualTable;
-        _agentMountNoteBookUseRouletteHook = services.GameInteropProvider.HookFromAddress<AgentMountNoteBookUseRouletteDetour>(
+        _agentMountNoteBookUseRouletteHook = services.GameInteropProvider.HookFromAddress<Delegates.UseRoulette>(
             vtable->UseRoulette,
-            OnUseRoulette);
-        _agentMountNoteBookGetRouletteIconHook = services.GameInteropProvider.HookFromAddress<AgentMountNoteBookGetRouletteIconDetour>(
+            UseRoulette);
+        _agentMountNoteBookGetRouletteIconHook = services.GameInteropProvider.HookFromAddress<Delegates.GetRouletteIcon>(
             vtable->GetRouletteIcon,
-            OnGetRouletteIcon);
-        _agentMountNoteBookGetRouletteActionIdHook = services.GameInteropProvider.HookFromAddress<AgentMountNoteBookGetRouletteActionIdDetour>(
+            GetRouletteIcon);
+        _agentMountNoteBookGetRouletteActionIdHook = services.GameInteropProvider.HookFromAddress<Delegates.GetRouletteActionId>(
             vtable->GetRouletteActionId,
-            OnGetRouletteActionId);
-        _agentMountNoteBookIsRouletteAvailableHook = services.GameInteropProvider.HookFromAddress<AgentMountNoteBookIsRouletteAvailableDetour>(
-            vtable->IsRouletteAvailable,
-            OnIsRouletteAvailable);
+            GetRouletteActionId);
+        _agentMountNoteBookIsRouletteAvailableHook = services.GameInteropProvider.HookFromAddress<Delegates.CanUseRoulette>(
+            vtable->CanUseRoulette,
+            CanUseRoulette);
     }
 
     internal void Enable()
@@ -57,7 +52,7 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
         _agentMountNoteBookIsRouletteAvailableHook.Disable();
     }
 
-    private unsafe bool OnIsRouletteAvailable(AgentInterface* @this, uint rouletteIndex)
+    private unsafe bool CanUseRoulette(AgentInterface* @this, uint rouletteIndex)
     {
         _services.PluginLog.Debug($"OnIsRouletteAvailable(this, {rouletteIndex})");
         if (rouletteIndex == 1)
@@ -68,7 +63,7 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
         return _agentMountNoteBookIsRouletteAvailableHook.Original(@this, rouletteIndex);
     }
 
-    private unsafe uint OnGetRouletteActionId(AgentInterface* @this, uint rouletteIndex)
+    private unsafe uint GetRouletteActionId(AgentInterface* @this, uint rouletteIndex)
     {
         _services.PluginLog.Debug($"OnGetRouletteActionId(this, {rouletteIndex})");
         return rouletteIndex == 1
@@ -76,7 +71,7 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
             : _agentMountNoteBookGetRouletteActionIdHook.Original(@this, rouletteIndex);
     }
 
-    private unsafe uint OnGetRouletteIcon(AgentInterface* @this, uint rouletteIndex)
+    private unsafe uint GetRouletteIcon(AgentInterface* @this, uint rouletteIndex)
     {
         _services.PluginLog.Debug($"OnGetRouletteIcon(this, {rouletteIndex})");
         return rouletteIndex == 1
@@ -84,7 +79,7 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
             : _agentMountNoteBookGetRouletteIconHook.Original(@this, rouletteIndex);
     }
 
-    private unsafe bool OnUseRoulette(AgentInterface* @this, uint rouletteIndex)
+    private unsafe bool UseRoulette(AgentInterface* @this, uint rouletteIndex)
     {
         _services.PluginLog.Debug($"OnUseRoulette(this, {rouletteIndex})");
         return rouletteIndex == 1
@@ -123,6 +118,14 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    private static class Delegates
+    {
+        public unsafe delegate bool UseRoulette(AgentInterface* @this, uint rouletteIndex);
+        public unsafe delegate uint GetRouletteIcon(AgentInterface* @this, uint rouletteIndex);
+        public unsafe delegate uint GetRouletteActionId(AgentInterface* @this, uint rouletteIndex);
+        public unsafe delegate bool CanUseRoulette(AgentInterface* @this, uint rouletteIndex);
+    }
+
     [StructLayout(LayoutKind.Explicit, Size = 0x160)]
     private unsafe struct AgentMountNoteBookVTable
     {
@@ -130,7 +133,7 @@ internal sealed class AgentMountNoteBookHooks : IDisposable
         public unsafe delegate* unmanaged<AgentInterface*, uint, bool> UseRoulette;
 
         [FieldOffset(0xC0)]
-        public unsafe delegate* unmanaged<AgentInterface*, uint, bool> IsRouletteAvailable;
+        public unsafe delegate* unmanaged<AgentInterface*, uint, bool> CanUseRoulette;
 
         [FieldOffset(0xC8)]
         public unsafe delegate* unmanaged<AgentInterface*, uint, uint> GetRouletteActionId;
