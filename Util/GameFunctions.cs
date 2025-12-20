@@ -86,7 +86,8 @@ internal sealed class GameFunctions : IDisposable
     {
         if (!_maxSpeedUnlockCache.TryGetValue(_services.ClientState.TerritoryType, out uint[]? maxSpeedUnlockIds))
         {
-            TerritoryType territoryType = _services.DataManager.GetExcelSheet<TerritoryType>().GetRow(_services.ClientState.TerritoryType);
+            TerritoryType territoryType = _services.DataManager.GetExcelSheet<TerritoryType>()
+                .GetRow(_services.ClientState.TerritoryType);
             if (territoryType.MountSpeed.IsValid)
             {
                 MountSpeed mountSpeed = territoryType.MountSpeed.Value;

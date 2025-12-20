@@ -7,6 +7,8 @@ using FFXIVClientStructs.Interop;
 
 using Lumina.Text.ReadOnly;
 
+using System.Globalization;
+
 internal sealed class MountData(TextureHelper textureHelper, ReadOnlySeString name)
 {
     private readonly TextureHelper _textureHelper = textureHelper;
@@ -22,6 +24,8 @@ internal sealed class MountData(TextureHelper textureHelper, ReadOnlySeString na
     public int ExtraSeats { get; set; }
 
     public bool IsFast { get; set; }
+
+    public string CapitalizedName => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Name.ExtractText());
 
     public ImTextureID GetIcon()
     {

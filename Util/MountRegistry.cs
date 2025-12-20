@@ -22,6 +22,9 @@ internal sealed class MountRegistry(PluginServices services)
     private readonly PluginServices _services = services;
     private readonly Dictionary<uint, MountData> _mountsByID = [];
     private readonly List<MountData> _mounts = [];
+    private readonly List<MountData> _unlockedMounts = [];
+    private readonly List<MountData> _availableMounts = [];
+
     private bool _isInitialized;
     private readonly object _lock = new();
     private string[]? _fastMountNames;
@@ -64,10 +67,12 @@ internal sealed class MountRegistry(PluginServices services)
 
         InitializeIfNecessary();
         int count = 0;
+        _unlockedMounts.Clear();
         foreach (MountData mount in _mounts)
         {
             if (mount.Unlocked = _services.GameFunctions.HasMountUnlocked(mount.ID))
             {
+                _unlockedMounts.Add(mount);
                 ++count;
             }
         }
@@ -93,14 +98,15 @@ internal sealed class MountRegistry(PluginServices services)
     public List<MountData> GetUnlockedMounts()
     {
         InitializeIfNecessary();
-        return _mounts.Where(x => x.Unlocked).ToList();
+        return _unlockedMounts;
     }
 
     public List<MountData> GetAvailableMounts(Pointer<ActionManager> actionManager, MountGroup group, out int largestExtraSeatCount)
     {
         RefreshUnlocked();
         List<MountData> unlockedMounts = GetUnlockedMounts();
-        List<MountData> result = new(unlockedMounts.Count);
+        _availableMounts.Clear();
+        List<MountData> result = _availableMounts;
         largestExtraSeatCount = 0;
 
         foreach (MountData item in unlockedMounts)
@@ -128,11 +134,7 @@ internal sealed class MountRegistry(PluginServices services)
 
                 if (maxSpeed > 0 && currentSpeed == 0)
                 {
-                    List<MountData> fastMounts = available.FindAll(x => x.IsFast);
-                    if (fastMounts.Count > 0)
-                    {
-                        available = fastMounts;
-                    }
+                    available.NonClearingUnsortedFindAllInPlace(x => x.IsFast);
                 }
 
                 break;
@@ -161,19 +163,11 @@ internal sealed class MountRegistry(PluginServices services)
                 ? Math.Min(largestExtraSeatNumber, partySize - 1)
                 : 1;
 
-            var withExtraSeats = available.Where(x => x.ExtraSeats >= extraSeats).ToList();
-            if (withExtraSeats.Count > 0)
-            {
-                available = withExtraSeats;
-            }
+            available.NonClearingUnsortedFindAllInPlace(x => x.ExtraSeats >= extraSeats);
         }
         else if (multiseatSettings.SingleSeatWhileSolo && partySize <= 1)
         {
-            List<MountData> withNoExtraSeats = available.FindAll(x => x.ExtraSeats == 0);
-            if (withNoExtraSeats.Count > 0)
-            {
-                available = withNoExtraSeats;
-            }
+            available.NonClearingUnsortedFindAllInPlace(x => x.ExtraSeats == 0);
         }
 
         if (available.Count is 0)
@@ -195,6 +189,6 @@ internal sealed class MountRegistry(PluginServices services)
     internal IEnumerable<string> GetFastMountNames()
     {
         InitializeIfNecessary();
-        return _fastMountNames ??= _mounts.Where(x => x.IsFast).Select(x => x.Name.ExtractText()).ToArray();
+        return _fastMountNames ??= _mounts.Where(x => x.IsFast).Select(x => x.CapitalizedName).ToArray();
     }
 }

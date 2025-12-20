@@ -22,6 +22,7 @@ internal sealed class MountGroupPage
     private MountGroupPageEnum _mode = MountGroupPageEnum.Settings;
 
     private string _nameFilter = "";
+    private string _rawNameFilter = "";
     private List<MountData>? _filteredMounts;
     private (int UnlockedCount, string Text) _lastFilter;
 
@@ -135,16 +136,16 @@ internal sealed class MountGroupPage
     private void DrawNameFilter()
     {
         ImGui.SetNextItemWidth(250);
-        // Returned boolean for when the input changed can be ignored,
-        // as _nameFilter is directly changed per reference.
-        if (ImGui.InputTextWithHint("###nameFilter"u8, "Search for name..."u8, ref _nameFilter))
+
+        if (ImGui.InputTextWithHint("###nameFilter"u8, "Search for name..."u8, ref _rawNameFilter))
         {
-            _nameFilter = _nameFilter.Trim();
+            _nameFilter = _rawNameFilter.Trim();
         }
 
         ImGui.SameLine();
         if (ImGuiComponents.IconButton(FontAwesomeIcon.FilterCircleXmark))
         {
+            _rawNameFilter = "";
             _nameFilter = "";
         }
 
@@ -261,8 +262,8 @@ internal sealed class MountGroupPage
         {
             string GetFastMountsText()
             {
-                return
-                    $"Limits mount selection to {string.Join("/", _plugin.MountRegistry.GetFastMountNames())} in areas where increased";
+                string fastMountNames = string.Join("/", _plugin.MountRegistry.GetFastMountNames());
+                return $"Limits mount selection to {fastMountNames} in areas where increased";
             }
 
             ImGui.Text(StringCache.Named["FastMountsText", GetFastMountsText]);

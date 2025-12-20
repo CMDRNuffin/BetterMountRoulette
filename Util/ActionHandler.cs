@@ -15,6 +15,10 @@ internal sealed class ActionHandler : IDisposable
     private const uint NORMAL_ROULETTE_ACTION_ID = 9;
     private const uint FLYING_ROULETTE_ACTION_ID = 24;
 
+    private static readonly ConditionFlag[] _ignoreActionConditions = [
+        ConditionFlag.Mounted,
+        ConditionFlag.RidingPillion,
+    ];
     private readonly PluginServices _services;
     private readonly MountRegistry _mountRegistry;
     private readonly Hook<UseActionHandler>? _useActionHook;
@@ -47,8 +51,7 @@ internal sealed class ActionHandler : IDisposable
         RouletteDisplayType? displayTypeOverride = _displayTypeOverride;
         _displayTypeOverride = null;
 
-        if (_services.Condition[ConditionFlag.Mounted]
-            || _services.Condition[ConditionFlag.RidingPillion]
+        if (_services.Condition.Any(_ignoreActionConditions)
             || CharacterConfig is not { } characterConfig)
         {
             return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
@@ -56,8 +59,8 @@ internal sealed class ActionHandler : IDisposable
 
         (string? groupName, bool isRouletteActionID) = (actionID, actionType) switch
         {
-            (NORMAL_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (CharacterConfig.MountRouletteGroup, true),
-            (FLYING_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (CharacterConfig.FlyingMountRouletteGroup, true),
+            (NORMAL_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (characterConfig.MountRouletteGroup, true),
+            (FLYING_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (characterConfig.FlyingMountRouletteGroup, true),
             _ => (null, false),
         };
 
