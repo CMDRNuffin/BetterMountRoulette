@@ -9,20 +9,22 @@ using Dalamud.Bindings.ImGui;
 using System;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using BetterMountRoulette.Util.Memory;
 
 internal sealed class RenameItemDialog(string title, string initialName, Action<string> onComplete)
     : DialogWindow(title, ImGuiWindowFlags.AlwaysAutoResize)
 {
     private string _name = initialName;
+    private StringView _normalized = initialName;
     private readonly Action<string> _onComplete = onComplete;
-    private Func<string, bool>? _validateName;
-    private Func<string, ReadOnlySpan<byte>>? _getValidationErrors;
+    private Func<StringView, bool>? _validateName;
+    private Func<StringView, ReadOnlySpan<byte>>? _getValidationErrors;
     private static Regex? _normalizeWhitespaceRegex;
 
     public bool AllowEmptyName { get; set; }
     public bool NormalizeWhitespace { get; set; }
 
-    public void SetValidation(Func<string, bool> validate, Func<string, ReadOnlySpan<byte>> getValidationErrors)
+    public void SetValidation(Func<StringView, bool> validate, Func<StringView, ReadOnlySpan<byte>> getValidationErrors)
     {
         _validateName = validate;
         _getValidationErrors = getValidationErrors;
@@ -32,7 +34,11 @@ internal sealed class RenameItemDialog(string title, string initialName, Action<
     {
         ImGui.Text("Name:"u8);
         ImGui.SameLine();
-        _ = ImGui.InputText(""u8, ref _name, 1000);
+        if (ImGui.InputText(""u8, ref _name, 1000))
+        {
+            _normalized = GetNormalizedName();
+        }
+
         bool nameIsInvalid = !ValidateNameImpl();
 
         ImGui.BeginDisabled(nameIsInvalid);
@@ -60,8 +66,8 @@ internal sealed class RenameItemDialog(string title, string initialName, Action<
     {
         Debug.Assert(!ValidateNameImpl(), "GetValidationErrors should only be called if validation failed");
 
-        string name = GetNormalizedName();
-        return !AllowEmptyName && string.IsNullOrEmpty(name)
+        StringView name = GetNormalizedName();
+        return !AllowEmptyName && name.IsEmpty
             ? "Please provide a name."u8
             : _getValidationErrors is { } getValidationErrors
             ? getValidationErrors(name)
@@ -70,19 +76,18 @@ internal sealed class RenameItemDialog(string title, string initialName, Action<
 
     private bool ValidateNameImpl()
     {
-        string name = GetNormalizedName();
-        return (AllowEmptyName || !string.IsNullOrEmpty(name))
-            && (_validateName is not { } validateName || validateName(name));
+        return (AllowEmptyName || !_normalized.IsEmpty)
+            && (_validateName is not { } validateName || validateName(_normalized));
     }
 
-    private string GetNormalizedName()
+    private StringView GetNormalizedName()
     {
         return NormalizeWhitespace ? NormalizeWhiteSpace(_name) : _name;
     }
 
-    public static string NormalizeWhiteSpace(string value)
+    public static StringView NormalizeWhiteSpace(string value)
     {
         _normalizeWhitespaceRegex ??= new Regex(@"\s+", RegexOptions.Compiled);
-        return _normalizeWhitespaceRegex.Replace(value, " ").Trim();
+        return new StringView(_normalizeWhitespaceRegex.Replace(value, " ")).Trim();
     }
 }

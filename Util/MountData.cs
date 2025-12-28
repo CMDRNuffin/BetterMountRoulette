@@ -12,12 +12,13 @@ using System.Globalization;
 internal sealed class MountData(TextureHelper textureHelper, ReadOnlySeString name)
 {
     private readonly TextureHelper _textureHelper = textureHelper;
+    private readonly ReadOnlySeString _internalName = name;
 
     public uint ID { get; init; }
 
     public uint IconID { get; init; }
 
-    public ReadOnlySeString Name { get; } = name;
+    public string Name => field ??= _internalName.ExtractText();
 
     public bool Unlocked { get; set; }
 
@@ -25,7 +26,7 @@ internal sealed class MountData(TextureHelper textureHelper, ReadOnlySeString na
 
     public bool IsFast { get; set; }
 
-    public string CapitalizedName => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Name.ExtractText());
+    public string CapitalizedName => field ??= CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Name);
 
     public ImTextureID GetIcon()
     {

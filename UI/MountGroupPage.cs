@@ -3,6 +3,7 @@
 using BetterMountRoulette.Config;
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
+using BetterMountRoulette.Util.Memory;
 
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
@@ -22,7 +23,6 @@ internal sealed class MountGroupPage
     private MountGroupPageEnum _mode = MountGroupPageEnum.Settings;
 
     private string _nameFilter = "";
-    private string _rawNameFilter = "";
     private List<MountData>? _filteredMounts;
     private (int UnlockedCount, string Text) _lastFilter;
 
@@ -79,12 +79,13 @@ internal sealed class MountGroupPage
             ImGui.EndDisabled();
             isMountsOpen = true;
 
+            StringView nameFilter = new();
             if (unlockedMounts.Count > 0)
             {
-                DrawNameFilter();
+                nameFilter = DrawNameFilter();
             }
 
-            List<MountData> filteredAndUnlockedMounts = ApplyFilterAndGetFilteredMounts(unlockedMounts);
+            List<MountData> filteredAndUnlockedMounts = ApplyFilterAndGetFilteredMounts(unlockedMounts, nameFilter);
 
             int pages = MountRenderer.GetPageCount(filteredAndUnlockedMounts.Count);
             if (pages == 0)
@@ -133,20 +134,16 @@ internal sealed class MountGroupPage
         }
     }
 
-    private void DrawNameFilter()
+    private StringView DrawNameFilter()
     {
         ImGui.SetNextItemWidth(250);
 
-        if (ImGui.InputTextWithHint("###nameFilter"u8, "Search for name..."u8, ref _rawNameFilter))
-        {
-            _nameFilter = _rawNameFilter.Trim();
-        }
+        _ = ImGui.InputTextWithHint("###nameFilter"u8, "Search for name..."u8, ref _nameFilter);
 
         ImGui.SameLine();
         if (ImGuiComponents.IconButton(FontAwesomeIcon.FilterCircleXmark))
         {
-            _rawNameFilter = "";
-            _nameFilter = "";
+            _nameFilter = string.Empty;
         }
 
         if (ImGui.IsItemHovered())
@@ -156,6 +153,8 @@ internal sealed class MountGroupPage
                 ImGui.SetTooltip("Clear name filter"u8);
             }
         }
+
+        return new StringView(_nameFilter).Trim();
     }
 
     private void RenderMountListPage(int page, MountGroup group, List<MountData> unlockedAndFilteredMounts)
@@ -301,19 +300,20 @@ internal sealed class MountGroupPage
                 : FastMode.Off;
     }
 
-    private List<MountData> ApplyFilterAndGetFilteredMounts(List<MountData> unlockedMounts)
+    private List<MountData> ApplyFilterAndGetFilteredMounts(List<MountData> unlockedMounts, StringView filter)
     {
-        if (string.IsNullOrEmpty(_nameFilter))
+        if (filter.Length == 0)
         {
             return unlockedMounts;
         }
 
         if (_filteredMounts is null
             || unlockedMounts.Count != _lastFilter.UnlockedCount
-            || !_nameFilter.Equals(_lastFilter.Text, StringComparison.OrdinalIgnoreCase))
+            || !filter.Equals(_lastFilter.Text, StringComparison.OrdinalIgnoreCase))
         {
-            _filteredMounts = unlockedMounts.Where(mountData =>
-                    mountData.Name.ExtractText().Contains(_nameFilter, StringComparison.OrdinalIgnoreCase)
+            _filteredMounts = unlockedMounts
+                .Where(
+                    mountData => mountData.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)
                 )
                 .ToList();
         }
@@ -390,7 +390,7 @@ internal sealed class MountGroupPage
                 x => AddMountGroup(characterConfig, x)
             ) { NormalizeWhitespace = true };
 
-            dialog.SetValidation(x => ValidateGroup(x, isNew: true), x => "A group with that name already exists."u8);
+            dialog.SetValidation(CreateValidator(isNew: true), x => "A group with that name already exists."u8);
             _plugin.WindowManager.OpenDialog(dialog);
         }
 
@@ -404,7 +404,7 @@ internal sealed class MountGroupPage
             ) { NormalizeWhitespace = true };
 
             dialog.SetValidation(
-                x => ValidateGroup(x, isNew: false),
+                CreateValidator(isNew: false),
                 x => "Another group with that name already exists."u8
             );
 
@@ -427,16 +427,16 @@ internal sealed class MountGroupPage
 
         return characterConfig.GetMountGroup(_currentMountGroup)!;
 
-        bool ValidateGroup(string newName, bool isNew)
+        Func<StringView, bool> CreateValidator(bool isNew)
         {
             if (_plugin.CharacterConfig is not { } characterConfig)
             {
-                return false;
+                return x => true;
             }
 
-            HashSet<string> names = new(
-                characterConfig.Groups.Select(x => x.Name),
-                StringComparer.InvariantCultureIgnoreCase
+            HashSet<StringView> names = new(
+                characterConfig.Groups.Select(x => new StringView(x.Name)),
+                StringViewComparer.InvariantCultureIgnoreCase
             );
 
             if (!isNew)
@@ -444,7 +444,7 @@ internal sealed class MountGroupPage
                 _ = names.Remove(currentGroup);
             }
 
-            return !names.Contains(newName);
+            return newName => !names.Contains(newName);
         }
     }
 

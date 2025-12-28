@@ -137,7 +137,7 @@ internal sealed class ActionHandler : IDisposable
             return;
         }
 
-        arguments = RenameItemDialog.NormalizeWhiteSpace(arguments);
+        arguments = RenameItemDialog.NormalizeWhiteSpace(arguments).ToString();
 
         MountGroup? mountGroup = characterConfig.GetMountGroup(arguments);
         if (mountGroup == null)
