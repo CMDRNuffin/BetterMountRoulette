@@ -3,8 +3,6 @@
 using BetterMountRoulette.Config.Data;
 using BetterMountRoulette.Util;
 
-using Dalamud.Interface.Windowing;
-
 using Dalamud.Bindings.ImGui;
 
 using Lumina.Excel.Sheets;
@@ -12,27 +10,21 @@ using Lumina.Excel.Sheets;
 using System;
 using System.Linq;
 using System.Numerics;
+using BetterRouletteBase.Util;
+using BetterRouletteBase.UI;
 
-internal sealed class ConfigWindow : Window
+internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGroup, MountData, MountRegistry, Configuration>
 {
     private readonly BetterMountRoulettePlugin _plugin;
     private readonly PluginServices _services;
-    private readonly MountGroupPage _mountGroupPage;
-    private readonly CharacterManagementRenderer _charManagementRenderer;
-    private float _windowMinWidth;
 
     private static (uint RowId, string Name)[]? _mainCommands;
 
-    public ConfigWindow(BetterMountRoulettePlugin plugin, PluginServices services) : base("Better Mount Roulette", ImGuiWindowFlags.AlwaysAutoResize)
+    public ConfigWindow(BetterMountRoulettePlugin plugin, PluginServices services)
+        : base("Better Mount Roulette", ImGuiWindowFlags.AlwaysAutoResize)
     {
         _plugin = plugin;
         _services = services;
-        _mountGroupPage = new MountGroupPage(_plugin, services);
-        _charManagementRenderer = new CharacterManagementRenderer(
-            services,
-            _plugin.WindowManager,
-            _plugin.CharacterManager,
-            _plugin.Configuration);
     }
 
     public override int GetHashCode()
@@ -45,55 +37,30 @@ internal sealed class ConfigWindow : Window
         return obj is ConfigWindow;
     }
 
-    public override void OnOpen()
+    protected override WindowManagerBase WindowManager => _plugin.WindowManager;
+    protected override MountRegistry ItemRegistry => _plugin.MountRegistry;
+    protected override CharacterConfig? CharacterConfig => _plugin.CharacterConfig;
+    protected override ReadOnlySpan<byte> ItemGroupsTabName => "Mount Groups"u8;
+    protected override ItemGroupPage<MountData, MountGroup, MountRegistry> CreateItemGroupPage()
     {
-        base.OnOpen();
-        _plugin.MountRegistry.RefreshUnlocked();
+        return new MountGroupPage(_plugin, _services);
     }
 
-    public override void PreDraw()
+    protected override CharacterManagementRendererBase<Configuration> CreateCharacterManagementRenderer()
     {
-        base.PreDraw();
-        ImGui.SetNextWindowSizeConstraints(new Vector2(_windowMinWidth, 0), new Vector2(float.MaxValue, float.MaxValue));
+        return new CharacterManagementRenderer(
+            _services,
+            _plugin.WindowManager,
+            _plugin.CharacterManager,
+            _plugin.Configuration);
     }
-
-    public override void Draw()
+    protected override void Save()
     {
-        if (_plugin.CharacterConfig is not CharacterConfig characterConfig)
-        {
-            ImGui.Text("Please log in first"u8);
-        }
-        else if (ImGui.BeginTabBar("settings"u8))
-        {
-            Tab("General"u8, GeneralConfigTab);
-            Tab("Mount Groups"u8, _mountGroupPage.RenderPage);
-            Tab("Character Management"u8, x => _charManagementRenderer.Draw());
-
-            ImGui.EndTabBar();
-
-            // Helper method for reducing boilerplate
-            void Tab(ReadOnlySpan<byte> name, Action<CharacterConfig> contentSelector)
-            {
-                if (ImGui.BeginTabItem(name))
-                {
-                    contentSelector(characterConfig);
-                    ImGui.EndTabItem();
-                }
-            }
-        }
-
-        _windowMinWidth = ImGui.GetWindowWidth();
-    }
-
-    public override void OnClose()
-    {
-        base.OnClose();
         _plugin.CharacterManager.SaveCurrentCharacterConfig();
         _plugin.SaveConfig(_plugin.Configuration);
-        _plugin.WindowManager.RemoveWindow(this);
     }
 
-    private void GeneralConfigTab(CharacterConfig characterConfig)
+    protected override void GeneralConfigTab(CharacterConfig characterConfig)
     {
         string? mountRouletteGroupName = characterConfig.MountRouletteGroup;
         string? flyingRouletteGroupName = characterConfig.FlyingMountRouletteGroup;
@@ -175,18 +142,19 @@ internal sealed class ConfigWindow : Window
 
         if (ImGui.BeginChildFrame(isFlying ? 2u : 1u, new Vector2(0, totalHeight)))
         {
-            if (ImGui.BeginTable(RouletteGroupID(isFlying), 2))
+            ReadOnlySpan<byte> rouletteGroupId = RouletteGroupID(isFlying);
+            if (ImGui.BeginTable(rouletteGroupId, 2))
             {
                 ImGui.TableSetupColumn("##icon"u8, ImGuiTableColumnFlags.WidthFixed, contentHeight);
                 ImGui.TableSetupColumn("##settings"u8, ImGuiTableColumnFlags.WidthStretch);
 
                 _ = ImGui.TableNextColumn();
 
-                ImGui.Image(_services.TextureHelper.LoadIconTexture(isFlying ? 122u : 118u), new Vector2(contentHeight));
+                ImGui.Image(_services.TextureProvider.LoadIconTexture(isFlying ? 122u : 118u), new Vector2(contentHeight));
 
                 _ = ImGui.TableNextColumn();
 
-                SelectRouletteGroup(characterConfig, ref groupName, isFlying);
+                SelectRouletteGroup(characterConfig, ref groupName, rouletteGroupId);
 
                 _ = ImGui.Checkbox("Reveal mount in cast bar"u8, ref show);
 
@@ -202,37 +170,5 @@ internal sealed class ConfigWindow : Window
         return isFlying
             ? "##roulettegroup_f"u8
             : "##roulettegroup_g"u8;
-    }
-
-    private static void SelectRouletteGroup(CharacterConfig characterConfig, ref string? groupName, bool isFlying = false)
-    {
-        bool isEnabled = groupName is not null;
-
-        _ = ImGui.Checkbox("Replace with mount group"u8, ref isEnabled);
-
-        if (isEnabled)
-        {
-            groupName ??= characterConfig.Groups.FirstOrDefault()?.Name;
-
-            if (groupName is not null)
-            {
-                ImGui.SameLine();
-                SelectMountGroup(characterConfig, ref groupName, isFlying);
-            }
-        }
-        else
-        {
-            groupName = null;
-        }
-
-        static void SelectMountGroup(CharacterConfig config, ref string group, bool isFlying)
-        {
-            ControlHelper.SelectItem(
-                config.Groups,
-                x => x.Name,
-                ref group,
-                RouletteGroupID(isFlying),
-                100);
-        }
     }
 }

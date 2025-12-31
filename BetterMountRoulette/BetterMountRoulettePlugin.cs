@@ -37,7 +37,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     private readonly PluginServices _services;
     private readonly ActionHandler _actionHandler;
     internal readonly WindowManager WindowManager;
-    internal readonly TextureHelper TextureHelper;
     internal readonly MountRegistry MountRegistry;
     internal readonly CharacterManager CharacterManager;
     private readonly ISubCommand _command;
@@ -47,11 +46,9 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
         ArgumentNullException.ThrowIfNull(pluginInterface);
 
         _services = new PluginServices(pluginInterface);
-        TextureHelper = new TextureHelper(_services);
         MountRegistry = new MountRegistry(_services);
 
         WindowManager = new WindowManager(this, _services);
-        pluginInterface.UiBuilder.Draw += WindowManager.Draw;
         try
         {
             _actionHandler = new ActionHandler(_services, MountRegistry);
@@ -72,8 +69,6 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             });
 
             _command = InitCommands();
-
-            pluginInterface.UiBuilder.OpenConfigUi += WindowManager.OpenConfigWindow;
 
             _ = _services.CommandManager.AddHandler(
                 COMMAND_TEXT,
@@ -224,8 +219,7 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             if (_services != null)
             {
-                _services.DalamudPluginInterface.UiBuilder.Draw -= WindowManager.Draw;
-                _services.DalamudPluginInterface.UiBuilder.OpenConfigUi -= WindowManager.OpenConfigWindow;
+                WindowManager.Dispose();
 
                 _ = _services.CommandManager.RemoveHandler(COMMAND_TEXT);
                 _ = _services.CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);

@@ -1,0 +1,3 @@
+[submodule "BetterMinionMountRouletteShared"]
+	path = BetterMinionMountRouletteShared
+	url = git@github.com:CMDRNuffin/BetterMinionMountRouletteShared.git

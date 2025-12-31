@@ -14,13 +14,7 @@ public sealed class PluginServices : IDisposable
     private bool _disposedValue;
 
     [PluginService]
-    public ISigScanner SigScanner { get; private set; } = null!;
-
-    [PluginService]
     public ICommandManager CommandManager { get; private set; } = null!;
-
-    [PluginService]
-    public IGameGui GameGui { get; private set; } = null!;
 
     [PluginService]
     public IDataManager DataManager { get; private set; } = null!;
@@ -51,15 +45,7 @@ public sealed class PluginServices : IDisposable
     [PluginService]
     public IGameInteropProvider GameInteropProvider { get; private set; } = null!;
 
-    [PluginService]
-    public IAddonLifecycle AddonLifecycle { get; private set; } = null!;
-
-    [PluginService]
-    public IKeyState KeyState { get; private set; } = null!;
-
     internal GameFunctions GameFunctions { get; }
-
-    internal TextureHelper TextureHelper { get; }
 
     private event EventHandler? LoginInternal;
     internal event EventHandler Login
@@ -91,7 +77,6 @@ public sealed class PluginServices : IDisposable
     {
         DalamudPluginInterface = pluginInterface;
         _ = pluginInterface.Inject(this);
-        TextureHelper = new(this);
 
         GameFunctions = new GameFunctions(this);
     }

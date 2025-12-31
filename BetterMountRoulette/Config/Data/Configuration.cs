@@ -1,29 +1,22 @@
 ﻿namespace BetterMountRoulette.Config.Data;
 
-using Dalamud.Configuration;
+using BetterRouletteBase.Config;
 
 using Newtonsoft.Json;
 
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
-internal sealed class Configuration : IPluginConfiguration
+internal sealed class Configuration : ConfigurationBase
 {
     public const int CONFIG_VERSION = 3;
     public const ulong DUMMY_LEGACY_CONFIG_ID = 0;
     public const string DEFAULT_GROUP_NAME = "Default";
-
-    [Versions(introduced: 0)]
-    public int Version { get; set; }
 
     [Versions(introduced: 0, removed: 2)]
     public bool Enabled { get; set; }
 
     [Versions(introduced: 0, removed: 3)]
     public HashSet<uint> EnabledMounts { get; set; } = [];
-
-    [Versions(introduced: 3)]
-    public Dictionary<ulong, CharacterConfigEntry> CharacterConfigs { get; set; } = [];
 
     [Versions(introduced: 3)]
     public int? NewCharacterHandling { get; set; }
@@ -57,23 +50,4 @@ internal sealed class Configuration : IPluginConfiguration
         public const int IMPORT = 1;
         public const int BLANK = 2;
     }
-}
-
-public class CharacterConfigEntry
-{
-    [field: MaybeNull]
-    public string CharacterName
-    {
-        get => field ?? "INVALID CONFIG";
-        set;
-    }
-
-    [field: MaybeNull]
-    public string CharacterWorld
-    {
-        get => field ?? "INVALID CONFIG";
-        set;
-    }
-
-    public string FileName { get; set; } = "";
 }

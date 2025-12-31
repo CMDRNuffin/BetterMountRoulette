@@ -1,11 +1,13 @@
 ﻿namespace BetterMountRoulette.Config.Data;
 
+using BetterRouletteBase.Config;
+
 using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
 
-internal sealed class MountGroup
+internal sealed class MountGroup : IItemGroup
 {
     public string Name { get; set; } = "";
 
@@ -32,6 +34,9 @@ internal sealed class MountGroup
     public bool PvpPreferMoreSeats { get; set; }
 
     public bool PvpForceSingleSeatersWhileSolo { get; set; }
+
+    [JsonIgnore]
+    HashSet<uint> IItemGroup.IncludedItems => IncludedMounts;
 
     public MultiseatSettings GetMultiSeatSettings(bool isPvp)
     {

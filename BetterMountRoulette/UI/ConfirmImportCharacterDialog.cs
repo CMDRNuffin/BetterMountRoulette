@@ -1,6 +1,6 @@
 ﻿namespace BetterMountRoulette.UI;
 
-using BetterMountRoulette.UI.Base;
+using BetterRouletteBase.UI.Base;
 
 using Dalamud.Bindings.ImGui;
 

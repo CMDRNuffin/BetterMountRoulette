@@ -2,6 +2,8 @@
 
 using BetterMountRoulette.Config.Data;
 
+using BetterRouletteBase.Config;
+
 using System;
 
 internal static class ConfigVersionManager

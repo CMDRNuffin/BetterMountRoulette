@@ -1,13 +1,15 @@
 ﻿namespace BetterMountRoulette.Config.Data;
 
+using BetterRouletteBase.Config;
+using BetterRouletteBase.Util.Memory;
+
 using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
-internal sealed class CharacterConfig
+internal sealed class CharacterConfig : ICharacterConfig<MountGroup>
 {
     [JsonIgnore]
     public bool IsNew { get; set; }
@@ -39,12 +41,26 @@ internal sealed class CharacterConfig
         FlyingMountRouletteGroup = other.FlyingMountRouletteGroup;
     }
 
-    [SuppressMessage(
-        "Globalization",
-        "CA1309:Use ordinal string comparison",
-        Justification = "We actually want string normalization here, to ensure same behavior as in the duplicate check when renaming or adding a group")]
-    public MountGroup? GetMountGroup(string name)
+    public MountGroup? GetGroupByName(StringView name)
     {
         return Groups.FirstOrDefault(x => x.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    public void ResetSelection(string from, string? to)
+    {
+        if (MountRouletteGroup == from)
+        {
+            MountRouletteGroup = to;
+        }
+
+        if (FlyingMountRouletteGroup == from)
+        {
+            FlyingMountRouletteGroup = to;
+        }
+    }
+
+    public void AddGroup(string name)
+    {
+        Groups.Add(new MountGroup { Name = name });
     }
 }

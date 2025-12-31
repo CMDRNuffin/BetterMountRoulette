@@ -1,9 +1,7 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.Sdk/14.0.1">
+﻿<Project Sdk="Dalamud.NET.Sdk/14.0.1">
   <PropertyGroup>
-    <Description>todo.</Description>
     <PackageProjectUrl>https://github.com/CMDRNuffin/BetterMountRoulette</PackageProjectUrl>
-    <OutputPath>dist</OutputPath>
+    <OutputPath>../dist</OutputPath>
     <GenerateDependencyFile>false</GenerateDependencyFile>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-all</AnalysisLevel>
@@ -38,6 +36,10 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <WarningLevel>9999</WarningLevel>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BetterMinionMountRouletteShared\BetterMinionMountRouletteShared.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Update="BetterMountRoulette.yaml">

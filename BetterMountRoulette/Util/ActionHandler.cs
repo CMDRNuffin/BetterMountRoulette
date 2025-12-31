@@ -1,16 +1,15 @@
 ﻿namespace BetterMountRoulette.Util;
 
 using BetterMountRoulette.Config.Data;
-using BetterMountRoulette.UI;
+
+using BetterRouletteBase.UI;
+using BetterRouletteBase.Util;
 
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Hooking;
 
 using FFXIVClientStructs.FFXIV.Client.Game;
 
-using System;
-
-internal sealed class ActionHandler : IDisposable
+internal sealed class ActionHandler : ActionHandlerBase
 {
     private const uint NORMAL_ROULETTE_ACTION_ID = 9;
     private const uint FLYING_ROULETTE_ACTION_ID = 24;
@@ -21,32 +20,17 @@ internal sealed class ActionHandler : IDisposable
     ];
     private readonly PluginServices _services;
     private readonly MountRegistry _mountRegistry;
-    private readonly Hook<UseActionHandler>? _useActionHook;
     private readonly GameFunctions _gameFunctions;
     private RouletteDisplayType? _displayTypeOverride;
-    private bool _disposedValue;
 
-    public unsafe ActionHandler(
-        PluginServices services,
-        MountRegistry mountRegistry)
+    public ActionHandler(PluginServices services, MountRegistry mountRegistry) : base(services.GameInteropProvider, services.PluginLog)
     {
         _services = services;
         _mountRegistry = mountRegistry;
         _gameFunctions = _services.GameFunctions;
-        void* renderAddress = ActionManager.MemberFunctionPointers.UseAction;
-        if (renderAddress is null)
-        {
-            _services.PluginLog.Debug("Unable to load UseAction address");
-            return;
-        }
-
-        _useActionHook = _services.GameInteropProvider.HookFromAddress<UseActionHandler>(renderAddress, OnUseAction);
-        _useActionHook.Enable();
     }
 
-    public unsafe delegate byte UseActionHandler(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID = 3758096384U, uint a4 = 0U, uint a5 = 0U, uint a6 = 0U, void* a7 = default);
-
-    private unsafe byte OnUseAction(ActionManager* actionManager, ActionType actionType, uint actionID, long targetID, uint a4, uint a5, uint a6, void* a7)
+    protected unsafe override bool OnUseAction(UseActionArgs args)
     {
         RouletteDisplayType? displayTypeOverride = _displayTypeOverride;
         _displayTypeOverride = null;
@@ -54,21 +38,21 @@ internal sealed class ActionHandler : IDisposable
         if (_services.Condition.Any(_ignoreActionConditions)
             || CharacterConfig is not { } characterConfig)
         {
-            return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
+            return args.Original();
         }
 
-        (string? groupName, bool isRouletteActionID) = (actionID, actionType) switch
+        string? groupName = (args.ActionID, args.ActionType) switch
         {
-            (NORMAL_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (characterConfig.MountRouletteGroup, true),
-            (FLYING_ROULETTE_ACTION_ID, ActionType.GeneralAction) => (characterConfig.FlyingMountRouletteGroup, true),
-            _ => (null, false),
+            (NORMAL_ROULETTE_ACTION_ID, ActionType.GeneralAction) => characterConfig.MountRouletteGroup,
+            (FLYING_ROULETTE_ACTION_ID, ActionType.GeneralAction) => characterConfig.FlyingMountRouletteGroup,
+            _ => null,
         };
 
-        ActionType oldActionType = actionType;
-        uint oldActionId = actionID;
+        ActionType oldActionType = args.ActionType;
+        uint oldActionId = args.ActionID;
         if (groupName is not null)
         {
-            MountGroup? mountGroup = CharacterConfig.GetMountGroup(groupName);
+            MountGroup? mountGroup = CharacterConfig.GetGroupByName(groupName);
 
             uint newActionID = 0;
             if (mountGroup is not null)
@@ -78,8 +62,8 @@ internal sealed class ActionHandler : IDisposable
 
             if (newActionID is not 0)
             {
-                actionType = ActionType.Mount;
-                actionID = newActionID;
+                args.ActionType = ActionType.Mount;
+                args.ActionID = newActionID;
             }
         }
 
@@ -107,10 +91,10 @@ internal sealed class ActionHandler : IDisposable
                 case NORMAL_ROULETTE_ACTION_ID when CharacterConfig.RevealMountsNormal:
                     _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.PlainMount;
                     break;
-                case FLYING_ROULETTE_ACTION_ID when actionType != oldActionType:
+                case FLYING_ROULETTE_ACTION_ID when args.ActionType != oldActionType:
                     _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.FlyingRoulette;
                     break;
-                case NORMAL_ROULETTE_ACTION_ID when actionType != oldActionType:
+                case NORMAL_ROULETTE_ACTION_ID when args.ActionType != oldActionType:
                     _gameFunctions.NextMountRouletteOverride = MountRouletteOverride.NormalRoulette;
                     break;
                 default:
@@ -119,7 +103,7 @@ internal sealed class ActionHandler : IDisposable
             }
         }
 
-        return _useActionHook!.Original(actionManager, actionType, actionID, targetID, a4, a5, a6, a7);
+        return args.Original();
     }
 
     public CharacterConfig? CharacterConfig { get; set; }
@@ -139,7 +123,7 @@ internal sealed class ActionHandler : IDisposable
 
         arguments = RenameItemDialog.NormalizeWhiteSpace(arguments).ToString();
 
-        MountGroup? mountGroup = characterConfig.GetMountGroup(arguments);
+        MountGroup? mountGroup = characterConfig.GetGroupByName(arguments);
         if (mountGroup == null)
         {
             // handle quotes because not doing that in the first place was a dumb decision
@@ -148,7 +132,7 @@ internal sealed class ActionHandler : IDisposable
                 arguments = arguments[1..^1];
             }
 
-            mountGroup = characterConfig.GetMountGroup(arguments);
+            mountGroup = characterConfig.GetGroupByName(arguments);
             if (mountGroup == null)
             {
                 PrintError($"Mount group \"{arguments}\" not found.");
@@ -177,34 +161,7 @@ internal sealed class ActionHandler : IDisposable
         }
     }
 
-    private void Dispose(bool disposing)
+    protected override void DisposeInternal(bool disposing)
     {
-        if (!_disposedValue)
-        {
-            if (disposing)
-            {
-                // TODO: dispose managed state (managed objects)
-            }
-
-            _useActionHook?.Dispose();
-
-            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-            // TODO: set large fields to null
-            _disposedValue = true;
-        }
-    }
-
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-    ~ActionHandler()
-    {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: false);
-    }
-
-    public void Dispose()
-    {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
     }
 }
