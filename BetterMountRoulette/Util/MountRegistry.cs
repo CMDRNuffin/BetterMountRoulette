@@ -24,6 +24,8 @@ internal sealed class MountRegistry(PluginServices services) : ItemRegistry<Moun
     private string[]? _fastMountNames;
     private int _largestExtraSeatCount;
 
+    private static readonly uint[] _fastMountIDs = [71, 318, 421] /* TODO: find a better way to get this info */;
+
     public int UnlockedMountCount { get; private set; }
 
     protected override IEnumerable<MountData> GetAllItems()
@@ -37,7 +39,7 @@ internal sealed class MountRegistry(PluginServices services) : ItemRegistry<Moun
                    ID = mount.RowId,
                    Unlocked = _services.GameFunctions.HasMountUnlocked(mount.RowId),
                    ExtraSeats = mount.ExtraSeats,
-                   IsFast = mount.RowId is 71 or 318 /* TODO: find a better way to get this info */
+                   IsFast = _fastMountIDs.Contains(mount.RowId)
                };
     }
 
