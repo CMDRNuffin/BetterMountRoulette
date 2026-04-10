@@ -1,0 +1,11 @@
+<Solution>
+    <Configurations>
+		<Platform Name="x64" />
+	</Configurations>
+	<Project Path="BetterMinionMountRouletteShared\BetterMinionMountRouletteShared.csproj">
+		<Platform Project="x64" />
+	</Project>
+	<Project Path="BetterMountRoulette\BetterMountRoulette.csproj">
+		<Platform Project="x64" />
+	</Project>
+</Solution>
