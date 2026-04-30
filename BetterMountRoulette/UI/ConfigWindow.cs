@@ -154,7 +154,7 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
 
                 _ = ImGui.TableNextColumn();
 
-                SelectRouletteGroup(characterConfig, ref groupName, rouletteGroupId);
+                SelectRouletteGroup(characterConfig, "Replace with mount group"u8, ref groupName, rouletteGroupId);
 
                 _ = ImGui.Checkbox("Reveal mount in cast bar"u8, ref show);
 

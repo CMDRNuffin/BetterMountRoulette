@@ -33,7 +33,7 @@ internal sealed class GameFunctions : IDisposable
     private const uint FLYING_MOUNT_ROULETTE_ROW_INDEX = 24;
 
     private readonly PluginServices _services;
-    private readonly Dictionary<ushort, uint[]?> _maxSpeedUnlockCache = [];
+    private readonly Dictionary<uint, uint[]?> _maxSpeedUnlockCache = [];
 
     private bool _disposedValue;
 
