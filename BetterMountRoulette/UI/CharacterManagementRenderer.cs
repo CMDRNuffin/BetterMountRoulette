@@ -12,20 +12,13 @@ using Dalamud.Bindings.ImGui;
 using System;
 using System.Numerics;
 
-internal sealed class CharacterManagementRenderer(
-    PluginServices services,
-    WindowManager windowManager,
-    CharacterManager characterManager,
-    Configuration configuration
-)
-    : CharacterManagementRendererBase<Configuration>(
-        services.PlayerState,
-        services.DalamudPluginInterface,
-        windowManager,
-        characterManager,
-        configuration
-    )
+internal sealed class CharacterManagementRenderer : CharacterManagementRendererBase<Configuration>
 {
+    public CharacterManagementRenderer(PluginServices services, WindowManager windowManager, CharacterManager characterManager, Configuration configuration)
+        : base(services.PlayerState, services.DalamudPluginInterface, windowManager, characterManager, configuration)
+    {
+    }
+
     protected override bool IsPredefinedEntry(ulong? characterId)
     {
         return characterId == Configuration.DUMMY_LEGACY_CONFIG_ID;

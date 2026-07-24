@@ -21,7 +21,7 @@ internal sealed class BaseCommand : SubCommandBase
             return false;
         }
 
-        Plugin.WindowManager.OpenConfigWindow();
+        Services.WindowManager.OpenConfigWindow();
         return true;
     }
 

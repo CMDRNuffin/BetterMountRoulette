@@ -9,11 +9,15 @@ using FFXIVClientStructs.Interop;
 
 using Lumina.Text.ReadOnly;
 
-internal sealed class MountData(ITextureProvider textureProvider, ReadOnlySeString name) : ItemData(textureProvider, name)
+internal sealed class MountData : ItemData
 {
     public int ExtraSeats { get; set; }
 
     public bool IsFast { get; set; }
+
+    public MountData(ITextureProvider textureProvider, ReadOnlySeString name) : base(textureProvider, name)
+    {
+    }
 
     public override unsafe bool IsAvailable(Pointer<ActionManager> actionManager)
     {

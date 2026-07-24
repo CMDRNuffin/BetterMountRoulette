@@ -136,6 +136,10 @@ csharp_style_allow_blank_line_after_colon_in_constructor_initializer_experimenta
 csharp_style_allow_blank_lines_between_consecutive_braces_experimental = false:warning
 csharp_style_allow_embedded_statements_on_same_line_experimental = false:warning
 
+# disable primary constructors, because they make it easier to write bugs by disallowing readonly
+csharp_style_prefer_primary_constructors = false:warning
+dotnet_diagnostic.IDE0290.severity = none
+
 #### C# Formatting Rules ####
 
 # New line preferences

@@ -23,7 +23,7 @@ internal sealed class ActionHandler : ActionHandlerBase
     private readonly GameFunctions _gameFunctions;
     private RouletteDisplayType? _displayTypeOverride;
 
-    public ActionHandler(PluginServices services, MountRegistry mountRegistry) : base(services.GameInteropProvider, services.PluginLog)
+    public ActionHandler(PluginServices services, MountRegistry mountRegistry) : base(services.GameInteropProvider)
     {
         _services = services;
         _mountRegistry = mountRegistry;

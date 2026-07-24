@@ -12,12 +12,9 @@ using System;
 
 internal sealed class MountGroupPage : ItemGroupPage<MountData, MountGroup, MountRegistry>
 {
-    private readonly BetterMountRoulettePlugin _plugin;
-
-    internal MountGroupPage(BetterMountRoulettePlugin plugin, PluginServices services)
-        : base(plugin.MountRegistry, services.TextureProvider, plugin.WindowManager, "mount")
+    internal MountGroupPage(PluginServices services)
+        : base(services.MountRegistry, services.TextureProvider, services.WindowManager, "mount")
     {
-        _plugin = plugin;
     }
 
     protected override void PluginSpecificSettings(MountGroup group)
@@ -73,7 +70,7 @@ internal sealed class MountGroupPage : ItemGroupPage<MountData, MountGroup, Moun
         {
             string GetFastMountsText()
             {
-                string fastMountNames = string.Join("/", _plugin.MountRegistry.GetFastMountNames());
+                string fastMountNames = string.Join("/", ItemRegistry.GetFastMountNames());
                 return $"Limits mount selection to {fastMountNames} in areas where increased";
             }
 

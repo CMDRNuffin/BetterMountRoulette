@@ -4,12 +4,16 @@ using BetterRouletteBase.UI.Base;
 
 using Dalamud.Bindings.ImGui;
 
-internal sealed class ConfirmImportCharacterDialog(ConfirmImportCharacterDialog.ImportHandler importHandler)
-    : DialogWindow("Better Mount Roulette", ImGuiWindowFlags.Modal)
+internal sealed class ConfirmImportCharacterDialog : DialogWindow
 {
-    private readonly ImportHandler _importHandler = importHandler;
+    private readonly ImportHandler _importHandler;
 
     private bool _skipAsking;
+
+    public ConfirmImportCharacterDialog(ImportHandler importHandler) : base("Better Mount Roulette", ImGuiWindowFlags.Modal)
+    {
+        _importHandler = importHandler;
+    }
 
     public delegate void ImportHandler(bool import, bool rememberAnswer);
 

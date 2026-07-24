@@ -15,15 +15,13 @@ using BetterRouletteBase.UI;
 
 internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGroup, MountData, MountRegistry, Configuration>
 {
-    private readonly BetterMountRoulettePlugin _plugin;
     private readonly PluginServices _services;
 
     private static (uint RowId, string Name)[]? _mainCommands;
 
-    public ConfigWindow(BetterMountRoulettePlugin plugin, PluginServices services)
+    public ConfigWindow(PluginServices services)
         : base("Better Mount Roulette", ImGuiWindowFlags.AlwaysAutoResize)
     {
-        _plugin = plugin;
         _services = services;
     }
 
@@ -37,27 +35,27 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
         return obj is ConfigWindow;
     }
 
-    protected override WindowManagerBase WindowManager => _plugin.WindowManager;
-    protected override MountRegistry ItemRegistry => _plugin.MountRegistry;
-    protected override CharacterConfig? CharacterConfig => _plugin.CharacterConfig;
+    protected override WindowManagerBase WindowManager => _services.WindowManager;
+    protected override MountRegistry ItemRegistry => _services.MountRegistry;
+    protected override CharacterConfig? CharacterConfig => _services.CharacterConfig;
     protected override ReadOnlySpan<byte> ItemGroupsTabName => "Mount Groups"u8;
     protected override ItemGroupPage<MountData, MountGroup, MountRegistry> CreateItemGroupPage()
     {
-        return new MountGroupPage(_plugin, _services);
+        return new MountGroupPage(_services);
     }
 
     protected override CharacterManagementRendererBase<Configuration> CreateCharacterManagementRenderer()
     {
         return new CharacterManagementRenderer(
             _services,
-            _plugin.WindowManager,
-            _plugin.CharacterManager,
-            _plugin.Configuration);
+            _services.WindowManager,
+            _services.CharacterManager,
+            _services.Configuration);
     }
     protected override void Save()
     {
-        _plugin.CharacterManager.SaveCurrentCharacterConfig();
-        _plugin.SaveConfig(_plugin.Configuration);
+        _services.CharacterManager.SaveCurrentCharacterConfig();
+        _services.SaveGlobalConfig();
     }
 
     protected override void GeneralConfigTab(CharacterConfig characterConfig)
@@ -75,6 +73,25 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
 
         EnableFlyingRouletteButtonCheckbox(characterConfig);
 
+        bool openWithNotebook = characterConfig.OpenWithNotebook;
+        if (ImGui.Checkbox("Show this with the mount guide"u8, ref openWithNotebook))
+        {
+            characterConfig.OpenWithNotebook = openWithNotebook;
+            if(openWithNotebook)
+            {
+                _services.RegisterOpenWithNotebookCallback();
+            }
+            else
+            {
+                _services.ClearOpenWithNotebookCallback();
+            }
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Opens and closes this window whenever you open or close the mount guide"u8);
+        }
+
         bool suppressChatErrors = characterConfig.SuppressChatErrors;
         _ = ImGui.Checkbox("Suppress error messages in chat"u8, ref suppressChatErrors);
 
@@ -85,7 +102,7 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
         characterConfig.SuppressChatErrors = suppressChatErrors;
 
         // backwards compatibility
-        _plugin.Configuration.Enabled = (mountRouletteGroupName ?? flyingRouletteGroupName) is not null;
+        _services.Configuration.Enabled = (mountRouletteGroupName ?? flyingRouletteGroupName) is not null;
     }
 
     private void EnableFlyingRouletteButtonCheckbox(CharacterConfig characterConfig)
@@ -123,6 +140,7 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
                 }
 
                 ImGui.Text(" windows"u8);
+                ImGui.Text("If one of those is currently open, you might need to close and reopen them for changes to this setting to be visible.");
                 ImGui.EndTooltip();
             }
 

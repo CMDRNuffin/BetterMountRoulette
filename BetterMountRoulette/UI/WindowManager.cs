@@ -7,11 +7,14 @@ using Dalamud.Interface.Windowing;
 using System.Linq;
 using BetterRouletteBase.UI;
 
-internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServices services)
-    : WindowManagerBase(services.DalamudPluginInterface)
+internal sealed class WindowManager : WindowManagerBase
 {
-    private readonly BetterMountRoulettePlugin _plugin = plugin;
-    private readonly PluginServices _services = services;
+    private readonly PluginServices _services;
+
+    public WindowManager(PluginServices services) : base(services.DalamudPluginInterface)
+    {
+        _services = services;
+    }
 
     protected override Window GetOrCreateConfigWindow(out bool isNew)
     {
@@ -19,7 +22,7 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
         if (configWindow is null)
         {
             isNew = true;
-            configWindow = new(_plugin, _services);
+            configWindow = new(_services);
         }
         else
         {
@@ -27,5 +30,10 @@ internal sealed class WindowManager(BetterMountRoulettePlugin plugin, PluginServ
         }
 
         return configWindow;
+    }
+
+    protected override Window? TryGetConfigWindow()
+    {
+        return InternalWindows.Windows.OfType<ConfigWindow>().FirstOrDefault();
     }
 }

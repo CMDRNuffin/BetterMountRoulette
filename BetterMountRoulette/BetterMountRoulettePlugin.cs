@@ -26,70 +26,43 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
     ////public const string CommandHelpMessage = $"Does all the things. Type \"{CommandText} help\" for more information.";
     public const string COMMAND_HELP_MESSAGE = $"Open the config window.";
 
-    internal readonly Configuration Configuration;
-
-    internal CharacterConfig? CharacterConfig
-    {
-        get => _actionHandler.CharacterConfig;
-        private set => _actionHandler.CharacterConfig = value;
-    }
-
     private readonly PluginServices _services;
-    private readonly ActionHandler _actionHandler;
-    internal readonly WindowManager WindowManager;
-    internal readonly MountRegistry MountRegistry;
-    internal readonly CharacterManager CharacterManager;
     private readonly ISubCommand _command;
 
     public unsafe BetterMountRoulettePlugin(IDalamudPluginInterface pluginInterface)
     {
         ArgumentNullException.ThrowIfNull(pluginInterface);
 
-        _services = new PluginServices(pluginInterface);
-        MountRegistry = new MountRegistry(_services);
+        Configuration config = pluginInterface.GetPluginConfig() as Configuration ?? Configuration.Init();
+        ConfigVersionManager.DoMigration(config);
 
-        WindowManager = new WindowManager(this, _services);
-        try
+        _services = new PluginServices(pluginInterface, config);
+        _services.SaveGlobalConfig();
+        
+        _services.Login += OnLogin;
+        _ = _services.Framework.RunOnTick(() =>
         {
-            _actionHandler = new ActionHandler(_services, MountRegistry);
-            Configuration config = pluginInterface.GetPluginConfig() as Configuration ?? Configuration.Init();
-            ConfigVersionManager.DoMigration(config);
-            SaveConfig(config);
-
-            Configuration = config;
-            CharacterManager = new CharacterManager(_services, config);
-
-            _services.Login += OnLogin;
-            _ = _services.Framework.RunOnTick(() =>
+            if (_services.PlayerState.IsLoaded)
             {
-                if (_services.PlayerState.IsLoaded)
-                {
-                    OnLogin(this, EventArgs.Empty);
-                }
+                OnLogin(this, EventArgs.Empty);
+            }
+        });
+
+        _command = InitCommands();
+        _services.AddCommand(
+            COMMAND_TEXT,
+            new CommandInfo(HandleCommand) { HelpMessage = COMMAND_HELP_MESSAGE });
+        _services.AddCommand(
+            MOUNT_COMMAND_TEXT,
+            new CommandInfo(_services.ActionHandler.HandleMountCommand)
+            {
+                HelpMessage = "Mount a random mount from the specified group, e.g. \"/pmount My Group\" summons a mount from the \"My Group\" group"
             });
-
-            _command = InitCommands();
-
-            _ = _services.CommandManager.AddHandler(
-                COMMAND_TEXT,
-                new CommandInfo(HandleCommand) { HelpMessage = COMMAND_HELP_MESSAGE });
-            _ = _services.CommandManager.AddHandler(
-                MOUNT_COMMAND_TEXT,
-                new CommandInfo(_actionHandler.HandleMountCommand)
-                {
-                    HelpMessage = "Mount a random mount from the specified group, e.g. \"/pmount My Group\" summons a mount from the \"My Group\" group"
-                });
-        }
-        catch
-        {
-            Dispose();
-            throw;
-        }
     }
 
     private void OnFrameworkUpdate(IFramework framework)
     {
-        if (CharacterConfig is { EnableFlyingRouletteButton: bool enable })
+        if (_services.CharacterConfig is { EnableFlyingRouletteButton: bool enable, OpenWithNotebook: bool openWithNotebook })
         {
             if (!_services.GameFunctions.ToggleFlyingRouletteButton(enable))
             {
@@ -97,22 +70,42 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 return;
             }
 
+            if (openWithNotebook)
+            {
+                _services.RegisterOpenWithNotebookCallback();
+            }
+
             _services.Framework.Update -= OnFrameworkUpdate;
+        }
+    }
+
+    private void OnLogin(object? sender, EventArgs e)
+    {
+        if (_services.PlayerState.IsLoaded)
+        {
+            _services.CharacterConfig = _services.CharacterManager.GetCharacterConfig(_services.PlayerState.ContentId);
+            if (_services.CharacterConfig.IsNew && _services.Configuration.CharacterConfigs.ContainsKey(Configuration.DUMMY_LEGACY_CONFIG_ID))
+            {
+                ImportCharacterConfig();
+                _services.CharacterConfig.IsNew = false;
+            }
+
+            _services.Framework.Update += OnFrameworkUpdate;
         }
     }
 
     private void ImportCharacterConfig(int? @override = null)
     {
-        switch (@override ?? Configuration.NewCharacterHandling)
+        switch (@override ?? _services.Configuration.NewCharacterHandling)
         {
             case Configuration.NewCharacterHandlingModes.IMPORT:
-                _ = CharacterManager.Import(Configuration.DUMMY_LEGACY_CONFIG_ID);
+                _ = _services.CharacterManager.Import(Configuration.DUMMY_LEGACY_CONFIG_ID);
                 break;
             case Configuration.NewCharacterHandlingModes.BLANK:
                 return;
             case Configuration.NewCharacterHandlingModes.ASK:
             default: /* default to "ask" for invalid values */
-                WindowManager.OpenDialog(new ConfirmImportCharacterDialog(ConfirmAction));
+                _services.WindowManager.OpenDialog(new ConfirmImportCharacterDialog(ConfirmAction));
                 break;
         }
 
@@ -128,34 +121,9 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
 
             if (remember)
             {
-                Configuration.NewCharacterHandling = mode;
+                _services.Configuration.NewCharacterHandling = mode;
             }
         }
-    }
-
-    private void OnLogin(object? sender, EventArgs e)
-    {
-        if (_services.PlayerState.IsLoaded)
-        {
-            CharacterConfig = CharacterManager.GetCharacterConfig(_services.PlayerState.ContentId);
-            if (CharacterConfig.IsNew && Configuration.CharacterConfigs.ContainsKey(Configuration.DUMMY_LEGACY_CONFIG_ID))
-            {
-                ImportCharacterConfig();
-                CharacterConfig.IsNew = false;
-            }
-
-            _services.Framework.Update += OnFrameworkUpdate;
-        }
-    }
-
-    internal void SaveConfig(Configuration configuration)
-    {
-        if (configuration is null || _services is null)
-        {
-            return;
-        }
-
-        _services.DalamudPluginInterface.SavePluginConfig(configuration);
     }
 
     private void HandleCommand(string command, string arguments)
@@ -170,13 +138,13 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
             if (!success)
             {
                 _services.PluginLog.Error($"Invalid command: {command} {arguments}");
-                if (!(CharacterConfig?.SuppressChatErrors ?? false))
+                if (!(_services.CharacterConfig?.SuppressChatErrors ?? false))
                 {
                     _services.Chat.PrintError($"Invalid command: {command} {arguments}");
                 }
             }
         }
-        catch (Exception e) when (!(CharacterConfig?.SuppressChatErrors ?? false))
+        catch (Exception e) when (!(_services.CharacterConfig?.SuppressChatErrors ?? false))
         {
             _services.Chat.PrintError(e.Message);
             throw;
@@ -215,19 +183,8 @@ public sealed class BetterMountRoulettePlugin : IDalamudPlugin
                 // TODO: dispose managed state (managed objects)
             }
 
-            SaveConfig(Configuration);
-
-            if (_services != null)
-            {
-                WindowManager.Dispose();
-
-                _ = _services.CommandManager.RemoveHandler(COMMAND_TEXT);
-                _ = _services.CommandManager.RemoveHandler(MOUNT_COMMAND_TEXT);
-
-                _services.Dispose();
-            }
-
-            _actionHandler?.Dispose();
+            _services.SaveGlobalConfig();
+            _services.Dispose();
 
             // TODO: free unmanaged resources (unmanaged objects) and override finalizer
             // TODO: set large fields to null

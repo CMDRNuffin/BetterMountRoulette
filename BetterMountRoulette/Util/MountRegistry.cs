@@ -10,16 +10,14 @@ using Lumina.Excel.Sheets;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 /// <summary>
 /// Responsible for maintaining a list of mounts with ID, name, icon, and whether or not the mount is unlocked.
 /// </summary>
-[SuppressMessage("Performance", "CA1812", Justification = "Instantiated via reflection")]
-internal sealed class MountRegistry(PluginServices services) : ItemRegistry<MountData, MountGroup>(services.ClientState)
+internal sealed class MountRegistry : ItemRegistry<MountData, MountGroup>
 {
-    private readonly PluginServices _services = services;
+    private readonly PluginServices _services;
 
     private string[]? _fastMountNames;
     private int _largestExtraSeatCount;
@@ -28,9 +26,14 @@ internal sealed class MountRegistry(PluginServices services) : ItemRegistry<Moun
 
     public int UnlockedMountCount { get; private set; }
 
+    public MountRegistry(PluginServices services) : base(services.ClientState)
+    {
+        _services = services;
+    }
+
     protected override IEnumerable<MountData> GetAllItems()
     {
-        return from mount in _services.GameData.GetExcelSheet<Mount>()
+        return from mount in _services.DataManager.GetExcelSheet<Mount>()
                where mount.UIPriority > 0 && mount.Icon != 0 /* valid mounts only */
                orderby mount.UIPriority, mount.RowId
                select new MountData(_services.TextureProvider, mount.Singular)

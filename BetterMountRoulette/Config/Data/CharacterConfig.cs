@@ -30,6 +30,8 @@ internal sealed class CharacterConfig : ICharacterConfig<MountGroup>
 
     public bool EnableFlyingRouletteButton { get; set; } = true;
 
+    public bool OpenWithNotebook { get; set; }
+
     [JsonIgnore]
     public bool HasNonDefaultGroups => Groups.Count > 1;
 

@@ -8,11 +8,17 @@ using BetterRouletteBase.Config;
 using System.Collections.Generic;
 using System.Linq;
 
-internal sealed class CharacterManager(PluginServices services, Configuration configuration)
-    : CharacterManagerBase<Configuration, CharacterConfig>(services.PluginLog, services.DalamudPluginInterface, services.PlayerState, configuration)
+internal sealed class CharacterManager : CharacterManagerBase<Configuration, CharacterConfig>
 {
-    private readonly PluginServices _services = services;
-    private readonly Configuration _configuration = configuration;
+    private readonly PluginServices _services;
+    private readonly Configuration _configuration;
+
+    public CharacterManager(PluginServices services, Configuration configuration)
+        : base(services.PluginLog, services.DalamudPluginInterface, services.PlayerState, configuration)
+    {
+        _services = services;
+        _configuration = configuration;
+    }
 
     protected override void ImportFromConfig(CharacterConfig current, CharacterConfig toImport)
     {
