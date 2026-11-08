@@ -12,6 +12,10 @@ using System.Linq;
 using System.Numerics;
 using BetterRouletteBase.Util;
 using BetterRouletteBase.UI;
+using Dalamud.Interface.Utility.Raii;
+using TooltipDisposable = Dalamud.Interface.Utility.Raii.ImRaii.TooltipDisposable;
+using ChildFrameDisposable = Dalamud.Interface.Utility.Raii.ImRaii.ChildFrameDisposable;
+using TableDisposable = Dalamud.Interface.Utility.Raii.ImRaii.TableDisposable;
 
 internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGroup, MountData, MountRegistry, Configuration>
 {
@@ -120,10 +124,10 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
                 .Where(x => x.RowId is 3 or 61).Select(x => (x.RowId, x.Name.ExtractText()))
                 .ToArray();
 
-            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, ImGui.GetStyle().ItemSpacing.Y));
+            using IDisposable _ = ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, new Vector2(0, ImGui.GetStyle().ItemSpacing.Y));
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.BeginTooltip();
+                using TooltipDisposable __ = ImRaii.Tooltip();
 
                 ImGui.Text("Flying Mount Roulette is available from the "u8);
                 ImGui.SameLine();
@@ -141,10 +145,7 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
 
                 ImGui.Text(" windows"u8);
                 ImGui.Text("If one of those is currently open, you might need to close and reopen them for changes to this setting to be visible.");
-                ImGui.EndTooltip();
             }
-
-            ImGui.PopStyleVar();
         }
     }
 
@@ -158,10 +159,12 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
         float contentHeight = spacing + (checkboxHeight * ROWS);
         float totalHeight = contentHeight + (style.FramePadding.Y * 2) + style.ItemSpacing.Y;
 
-        if (ImGui.BeginChildFrame(isFlying ? 2u : 1u, new Vector2(0, totalHeight)))
+        using ChildFrameDisposable frame = ImRaii.ChildFrame(isFlying ? 2u : 1u, new Vector2(0, totalHeight));
+        if (frame.Success)
         {
             ReadOnlySpan<byte> rouletteGroupId = RouletteGroupID(isFlying);
-            if (ImGui.BeginTable(rouletteGroupId, 2))
+            using TableDisposable table = ImRaii.Table(rouletteGroupId, 2);
+            if (table.Success)
             {
                 ImGui.TableSetupColumn("##icon"u8, ImGuiTableColumnFlags.WidthFixed, contentHeight);
                 ImGui.TableSetupColumn("##settings"u8, ImGuiTableColumnFlags.WidthStretch);
@@ -175,11 +178,7 @@ internal sealed class ConfigWindow : ConfigWindowBase<CharacterConfig, MountGrou
                 SelectRouletteGroup(characterConfig, "Replace with mount group"u8, ref groupName, rouletteGroupId);
 
                 _ = ImGui.Checkbox("Reveal mount in cast bar"u8, ref show);
-
-                ImGui.EndTable();
             }
-
-            ImGui.EndChildFrame();
         }
     }
 

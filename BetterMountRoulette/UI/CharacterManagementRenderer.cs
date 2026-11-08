@@ -8,9 +8,12 @@ using BetterRouletteBase.UI;
 using BetterRouletteBase.Util;
 
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 
 using System;
 using System.Numerics;
+
+using ComboDisposable = Dalamud.Interface.Utility.Raii.ImRaii.ComboDisposable;
 
 internal sealed class CharacterManagementRenderer : CharacterManagementRendererBase<Configuration>
 {
@@ -39,15 +42,16 @@ internal sealed class CharacterManagementRenderer : CharacterManagementRendererB
 
             ReadOnlySpan<byte> characterHandlingMode = GetCharacterHandlingModeText(configuration.NewCharacterHandling);
 
-            if (ImGui.BeginCombo("##NewCharacterHandling"u8, characterHandlingMode))
+            using(ComboDisposable combo = ImRaii.Combo("##NewCharacterHandling"u8, characterHandlingMode))
             {
-                int? newCharacterHandling = configuration.NewCharacterHandling;
-                DrawSelection(ASK, ref newCharacterHandling);
-                DrawSelection(BLANK, ref newCharacterHandling);
-                DrawSelection(IMPORT, ref newCharacterHandling);
-                configuration.NewCharacterHandling = newCharacterHandling;
-
-                ImGui.EndCombo();
+                if (combo.Success)
+                {
+                    int? newCharacterHandling = configuration.NewCharacterHandling;
+                    DrawSelection(ASK, ref newCharacterHandling);
+                    DrawSelection(BLANK, ref newCharacterHandling);
+                    DrawSelection(IMPORT, ref newCharacterHandling);
+                    configuration.NewCharacterHandling = newCharacterHandling;
+                }
             }
 
             ImGui.SameLine();
@@ -96,10 +100,9 @@ internal sealed class CharacterManagementRenderer : CharacterManagementRendererB
         {
             return characterHandlingMode switch
             {
-                ASK => "Ask"u8,
                 BLANK => "Create empty profile"u8,
                 IMPORT => "Import legacy data"u8,
-                _ => "Ask"u8,
+                ASK or _ => "Ask"u8,
             };
         }
     }

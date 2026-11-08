@@ -17,7 +17,7 @@ internal sealed class ConfirmImportCharacterDialog : DialogWindow
 
     public delegate void ImportHandler(bool import, bool rememberAnswer);
 
-    public override void Draw()
+    protected override void DrawImpl()
     {
         ImGui.Text("You have no saved settings for this character."u8);
         ImGui.Text("Would you like to import legacy settings for this character?"u8);
